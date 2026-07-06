@@ -1,0 +1,993 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cedar Hill Fire — FY26 Budget Status Board</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#0e1420; --panel:#151d2b; --panel-2:#1b2536; --line:#2a3648; --line-soft:#212c3d;
+    --text:#e8edf4; --muted:#93a1b5; --faint:#61708a; --track:#243043;
+    --spent:#4a90d9; --enc:#e8a53b; --enc-2:#c98218; --pend:#d9764a; --wish:#9b6dd6;
+    --good:#39b676; --hot:#e8a53b; --over:#e5484d; --pace:#f2f5f9;
+    --shadow:0 8px 24px rgba(0,0,0,.30);
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:radial-gradient(1200px 500px at 50% -200px, #1a2536 0%, var(--ink) 60%);
+    color:var(--text);font-family:'Inter',system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+    line-height:1.5;-webkit-font-smoothing:antialiased;padding-bottom:80px;}
+  .wrap{max-width:1240px;margin:0 auto;padding:0 20px}
+
+  header{border-bottom:1px solid var(--line);
+    background:linear-gradient(180deg,#12192600,#0e142055),linear-gradient(90deg,#1a2333,#141c29);
+    position:relative;overflow:hidden;}
+  header::before{content:"";position:absolute;top:0;left:0;right:0;height:4px;
+    background:repeating-linear-gradient(45deg,var(--over) 0 22px,#0e1420 22px 44px);opacity:.9;}
+  .head-inner{padding:26px 0 22px;display:flex;flex-wrap:wrap;gap:18px 28px;align-items:flex-end;justify-content:space-between}
+  .titleblock{flex:1 1 320px;min-width:280px}
+  .badge{display:inline-flex;align-items:center;gap:10px;font-family:'Oswald';letter-spacing:.14em;
+    text-transform:uppercase;font-size:12px;color:var(--faint);margin-bottom:8px}
+  .badge .dot{width:9px;height:9px;border-radius:50%;background:var(--over);box-shadow:0 0 10px var(--over)}
+  h1{font-family:'Oswald';font-weight:700;font-size:clamp(26px,4.4vw,44px);letter-spacing:.01em;
+    margin:0;line-height:1.02;text-transform:uppercase}
+  h1 span{color:var(--over)}
+  .sub{color:var(--muted);font-size:14px;margin-top:8px;max-width:52ch}
+
+  .fyclocks{display:flex;gap:20px;flex:0 0 auto;flex-wrap:wrap}
+  .fyclock{min-width:158px;max-width:200px}
+  .fyclock .lab{font-family:'Oswald';letter-spacing:.1em;text-transform:uppercase;font-size:10px;color:var(--faint)}
+  .fyclock .big{font-family:'Oswald';font-weight:700;font-size:30px;line-height:1;margin-top:2px}
+  .fyclock .big small{font-size:14px;color:var(--muted);font-weight:500}
+  .fybar{height:10px;border-radius:6px;background:var(--track);margin-top:10px;position:relative;overflow:hidden}
+  .fybar i{position:absolute;inset:0 auto 0 0;background:linear-gradient(90deg,#5566ff,#7aa2ff);border-radius:6px}
+  .fybar i.spend{background:linear-gradient(90deg,#2f9e63,#49c07f)}
+  .fybar i.spend.over{background:linear-gradient(90deg,#c98218,#e8a53b)}
+  .fyclock .note{font-size:12px;color:var(--faint);margin-top:8px}
+
+  .rollup{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:22px 0 6px}
+  .stat{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 16px;box-shadow:var(--shadow)}
+  .stat .k{font-family:'Oswald';letter-spacing:.1em;text-transform:uppercase;font-size:10.5px;color:var(--faint)}
+  .stat .v{font-family:'Oswald';font-weight:600;font-size:23px;margin-top:3px}
+  .stat .v.small{font-size:19px}
+  .stat .subv{font-size:11px;color:var(--pend);margin-top:2px;font-weight:500}
+  .stat.avail .v{color:var(--good)}
+  .stat.enc .v{color:var(--enc)}
+  .stat.avail.wl-on .subv{color:#c6a2ec}
+
+  .controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:26px 0 14px}
+  .controls .grp{display:flex;gap:6px;flex-wrap:wrap}
+  .controls .lbl{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);
+    font-family:'Oswald';margin-right:2px;align-self:center}
+  .chip{cursor:pointer;user-select:none;border:1px solid var(--line);background:var(--panel);
+    color:var(--muted);border-radius:20px;padding:6px 13px;font-size:12.5px;font-weight:500;transition:.15s}
+  .chip:hover{border-color:#3a4a63;color:var(--text)}
+  .chip.on{background:#22314a;border-color:#3f5877;color:#fff}
+  #applyWlChip.on{background:#2c2145;border-color:#5a4088;color:#d9c2f5}
+  .jumpbtn{margin-left:auto}
+  .jumpbtn a{color:var(--muted);text-decoration:none;font-size:12.5px;border:1px solid var(--line);
+    padding:6px 13px;border-radius:20px}
+  .jumpbtn a:hover{color:#fff;border-color:#3f5877}
+
+  .grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin-top:6px;align-items:start}
+  .card{background:linear-gradient(180deg,var(--panel-2),var(--panel));border:1px solid var(--line);
+    border-radius:14px;padding:16px;box-shadow:var(--shadow);position:relative;
+    display:flex;flex-direction:column;min-height:392px}
+  .card .discs{margin-top:auto;padding-top:4px}
+
+  .ctop{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+  .ctitle{display:flex;flex-direction:column}
+  .code{font-family:'JetBrains Mono';font-size:11.5px;color:var(--faint);letter-spacing:.02em}
+  .name{font-family:'Oswald';font-weight:600;font-size:19px;letter-spacing:.01em;line-height:1.1;text-transform:uppercase}
+  .pill{font-family:'Oswald';font-weight:600;letter-spacing:.08em;text-transform:uppercase;font-size:10.5px;
+    padding:5px 10px;border-radius:20px;white-space:nowrap;border:1px solid transparent}
+  .pill.good{background:#12352a;color:#5fd6a0;border-color:#1c5540}
+  .pill.pace{background:#232c3a;color:#aeb9c8;border-color:#3a4658}
+  .pill.hot{background:#37290f;color:#f0bd6a;border-color:#5c4212}
+  .pill.over{background:#3a1518;color:#f79aa0;border-color:#6a2226}
+
+  .figs{display:flex;justify-content:space-between;align-items:flex-end;margin:14px 0 6px;gap:10px}
+  .fig .flab{font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--faint);font-family:'Oswald'}
+  .fig .used{font-family:'Oswald';font-weight:700;font-size:30px;line-height:1}
+  .fig.right{text-align:right}
+  .fig .avail{font-family:'Oswald';font-weight:700;font-size:26px;line-height:1}
+  .avail.pos{color:var(--good)} .avail.neg{color:var(--over)}
+  .afterpend{font-size:11px;color:#e8a53b;margin-top:4px;font-weight:500}
+  .afterpend b{color:#f0bd6a} .afterpend .wl{color:#c6a2ec}
+
+  .barwrap{position:relative;margin:13px 0 2px}
+  .bar{height:16px;border-radius:8px;background:var(--track);overflow:hidden;display:flex}
+  .bar .seg{height:100%}
+  .seg.spent{background:linear-gradient(180deg,#5a9fe4,#3f82cc)}
+  .seg.enc{background:repeating-linear-gradient(45deg,var(--enc) 0 7px,var(--enc-2) 7px 14px)}
+  .seg.pend{background:repeating-linear-gradient(-45deg,var(--pend) 0 4px,#a94e2f 4px 8px)}
+  .seg.wish{background:repeating-linear-gradient(45deg,var(--wish) 0 5px,#7a4fb0 5px 10px)}
+  .fymark{position:absolute;top:-8px;transform:translateX(-50%);width:0;height:0;
+    border-left:5px solid transparent;border-right:5px solid transparent;border-top:7px solid var(--pace)}
+
+  .legend{display:flex;gap:14px;flex-wrap:wrap;margin-top:11px;font-size:11.5px;color:var(--muted)}
+  .legend .li{display:flex;align-items:center;gap:6px}
+  .legend .sw{width:10px;height:10px;border-radius:3px}
+  .sw.spent{background:#4a90d9} .sw.enc{background:var(--enc)} .sw.pend{background:var(--pend)} .sw.wish{background:var(--wish)}
+  .sw.avail{background:var(--track);border:1px solid #3a4a63}
+  .sw.pacemark{width:0;height:0;border-left:4px solid transparent;border-right:4px solid transparent;
+    border-top:6px solid var(--pace);border-radius:0}
+  .legend b{color:var(--text);font-family:'JetBrains Mono';font-weight:600}
+
+  .pending-note{font-size:11.5px;color:var(--faint);margin-top:9px;line-height:1.4}
+  .pending-note b{color:#d9a07a;font-family:'JetBrains Mono';font-weight:600}
+  .pace-note{font-size:12px;margin-top:9px;color:var(--muted)}
+  .pace-note b{font-weight:600}
+  .pace-note .ahead{color:var(--hot)} .pace-note .behind{color:var(--good)} .pace-note .on{color:#aeb9c8}
+
+  details.disc{margin-top:12px;border-top:1px solid var(--line-soft);padding-top:10px}
+  details.disc>summary{cursor:pointer;list-style:none;display:flex;align-items:center;gap:8px;
+    font-size:12.5px;color:var(--faint);font-weight:500;user-select:none}
+  details.disc>summary::-webkit-details-marker{display:none}
+  details.disc>summary .caret{transition:.2s;font-size:10px;color:var(--faint)}
+  details.disc[open]>summary .caret{transform:rotate(90deg)}
+  details.disc>summary:hover{color:var(--text)}
+  .just-body{margin-top:10px}
+  .just-body .memo{font-size:12px;color:var(--faint);margin:0 0 8px;font-style:italic}
+  .tags{display:flex;flex-wrap:wrap;gap:6px}
+  .tag{font-size:11.5px;background:#111a27;border:1px solid var(--line-soft);color:var(--muted);
+    padding:4px 9px;border-radius:6px;line-height:1.35}
+  .tag:hover{border-color:#33445d;color:var(--text)}
+
+  /* sub-budgets */
+  .sub-body{margin-top:10px}
+  .sb-item{border:1px solid var(--line-soft);border-radius:10px;padding:10px 12px;margin-bottom:10px;background:#111927}
+  .sb-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .sb-name{flex:1 1 160px;background:#0f1723;border:1px solid var(--line);color:var(--text);border-radius:8px;
+    padding:7px 9px;font-size:13px;font-family:inherit;font-weight:600}
+  .sb-field{display:flex;flex-direction:column}
+  .sb-field label{font-size:9px;letter-spacing:.09em;text-transform:uppercase;color:var(--faint);
+    font-family:'Oswald';margin-bottom:3px}
+  .sb-amt{width:110px;background:#0f1723;border:1px solid var(--line);color:var(--text);border-radius:8px;
+    padding:7px 9px;font-size:13px;font-family:'JetBrains Mono'}
+  .sb-name:focus,.sb-amt:focus{outline:none;border-color:#4a6da0}
+  .sb-del{width:30px;height:32px;border:1px solid var(--line);background:none;color:var(--faint);
+    border-radius:8px;cursor:pointer;flex:0 0 auto;align-self:flex-end}
+  .sb-del:hover{color:var(--over);border-color:var(--over)}
+  .sb-barwrap{margin-top:10px}
+  .sb-bar{height:14px;border-radius:7px;background:var(--track);overflow:hidden}
+  .sb-bar i{display:block;height:100%;background:linear-gradient(180deg,#5a9fe4,#3f82cc);border-radius:7px 0 0 7px}
+  .sb-bar i.hot{background:linear-gradient(180deg,#e8a53b,#c98218)}
+  .sb-bar i.over{background:linear-gradient(180deg,#e5484d,#b83236)}
+  .sb-cap{display:flex;justify-content:space-between;gap:10px;font-size:11.5px;color:var(--muted);margin-top:6px;flex-wrap:wrap}
+  .sb-cap b{color:var(--text);font-family:'JetBrains Mono';font-weight:600}
+  .sb-cap .left.pos{color:var(--good)} .sb-cap .left.neg{color:var(--over)}
+  .sb-add{background:none;border:1px dashed var(--line);color:var(--muted);border-radius:8px;
+    padding:7px 12px;font-size:12.5px;cursor:pointer}
+  .sb-add:hover{color:#fff;border-color:#3f5877}
+  .sb-sum{font-size:12px;color:var(--muted);margin-top:10px}
+  .sb-sum b{color:var(--text);font-family:'JetBrains Mono'}
+  .sb-sum .neg{color:var(--over)}
+
+  /* ledger */
+  .ledger{margin-top:26px}
+  details.led{background:linear-gradient(180deg,var(--panel-2),var(--panel));border:1px solid var(--line);
+    border-radius:16px;padding:18px 22px;box-shadow:var(--shadow)}
+  details.led>summary{cursor:pointer;list-style:none;display:flex;align-items:center;gap:10px;
+    font-family:'Oswald';text-transform:uppercase;letter-spacing:.02em;font-size:17px;color:var(--text);user-select:none}
+  details.led>summary::-webkit-details-marker{display:none}
+  details.led>summary .caret{font-size:12px;color:var(--faint);transition:.2s}
+  details.led[open]>summary .caret{transform:rotate(90deg)}
+  .led-sum{font-size:13px;color:var(--muted);margin:14px 0 6px} .led-sum b{color:var(--text)}
+  .led-note{font-size:12px;color:var(--faint);margin:0 0 12px;line-height:1.5}
+  .led-scroll{max-height:340px;overflow:auto;border:1px solid var(--line);border-radius:10px}
+  .led-tbl{width:100%;border-collapse:collapse;font-size:12px}
+  .led-tbl th{position:sticky;top:0;background:#101825;color:var(--faint);font-family:'Oswald';
+    text-transform:uppercase;letter-spacing:.06em;font-size:10px;text-align:left;padding:8px 10px;border-bottom:1px solid var(--line)}
+  .led-tbl td{padding:7px 10px;border-bottom:1px solid var(--line-soft);color:var(--muted)}
+  .led-tbl td.mono{font-family:'JetBrains Mono'} .led-tbl td.ra{text-align:right;color:var(--text)}
+  .led-tbl tr.untk td{color:var(--faint);opacity:.65}
+  .led-pos{margin-top:12px;font-size:12px;color:var(--muted)}
+  .led-pos .po{display:inline-block;font-family:'JetBrains Mono';background:#111a27;border:1px solid var(--line-soft);
+    border-radius:6px;padding:2px 7px;margin:2px 3px}
+
+  .wl{margin-top:40px;background:linear-gradient(180deg,var(--panel-2),var(--panel));
+    border:1px solid var(--line);border-radius:16px;padding:22px;box-shadow:var(--shadow)}
+  .wl h2{font-family:'Oswald';text-transform:uppercase;letter-spacing:.02em;font-size:24px;margin:0}
+  .wl .desc{color:var(--muted);font-size:13.5px;margin:6px 0 14px;max-width:74ch}
+  .sync{display:inline-flex;align-items:center;gap:8px;font-size:12px;padding:6px 12px;border-radius:20px;
+    border:1px solid var(--line);margin-bottom:16px}
+  .sync .d{width:8px;height:8px;border-radius:50%;flex:0 0 auto}
+  .sync.on{background:#12352a;border-color:#1c5540;color:#8fe3b8}
+  .sync.on .d{background:#39b676;box-shadow:0 0 8px #39b676}
+  .sync.off{background:#2a2233;border-color:#4a3a2a;color:#d9b892}
+  .sync.off .d{background:#e8a53b}
+
+  .wl-form{display:grid;grid-template-columns:1fr 230px 130px 90px;gap:10px;align-items:end}
+  .field label{display:block;font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;
+    color:var(--faint);font-family:'Oswald';margin-bottom:5px}
+  .field input,.field select{width:100%;background:#0f1723;border:1px solid var(--line);color:var(--text);
+    border-radius:9px;padding:10px 11px;font-size:14px;font-family:inherit}
+  .field input:focus,.field select:focus{outline:none;border-color:#4a6da0;box-shadow:0 0 0 3px #4a6da033}
+  .addbtn{background:var(--over);border:none;color:#fff;font-family:'Oswald';font-weight:600;letter-spacing:.06em;
+    text-transform:uppercase;font-size:13px;padding:11px 10px;border-radius:9px;cursor:pointer;transition:.15s}
+  .addbtn:hover{filter:brightness(1.08)} .addbtn:active{transform:translateY(1px)}
+
+  .wl-empty{color:var(--faint);font-size:13px;text-align:center;padding:26px 0;border:1px dashed var(--line);
+    border-radius:12px;margin-top:18px}
+  .wl-group{margin-top:18px;border:1px solid var(--line);border-radius:12px;overflow:hidden}
+  .wl-ghead{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 15px;
+    background:#101825;flex-wrap:wrap}
+  .wl-ghead .gname{font-family:'Oswald';font-weight:600;text-transform:uppercase;font-size:15px}
+  .wl-ghead .gname small{color:var(--faint);font-family:'JetBrains Mono';font-weight:500;font-size:11px;margin-left:8px}
+  .wl-ghead .gname .inc{color:#d9a07a}
+  .verdict{font-family:'Oswald';font-weight:600;text-transform:uppercase;letter-spacing:.06em;font-size:12px;
+    padding:5px 11px;border-radius:20px}
+  .verdict.fit{background:#12352a;color:#5fd6a0;border:1px solid #1c5540}
+  .verdict.tight{background:#37290f;color:#f0bd6a;border:1px solid #5c4212}
+  .verdict.over{background:#3a1518;color:#f79aa0;border:1px solid #6a2226}
+  .wl-item{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:9px 15px;
+    border-top:1px solid var(--line-soft);font-size:13.5px}
+  .wl-item .x{cursor:pointer;color:var(--faint);border:1px solid var(--line);border-radius:6px;
+    width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto}
+  .wl-item .x:hover{color:var(--over);border-color:var(--over)}
+  .wl-item .cost{font-family:'JetBrains Mono';font-weight:600}
+  .wl-sum{display:flex;justify-content:flex-end;gap:26px;padding:11px 15px;border-top:1px solid var(--line);
+    background:#0d1420;font-size:12.5px;flex-wrap:wrap}
+  .wl-sum .pair{display:flex;flex-direction:column;align-items:flex-end}
+  .wl-sum .pk{font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--faint);font-family:'Oswald'}
+  .wl-sum .pv{font-family:'JetBrains Mono';font-weight:600;font-size:15px}
+  .pv.pos{color:var(--good)} .pv.neg{color:var(--over)}
+
+  .wl-actions{display:flex;justify-content:space-between;align-items:center;margin-top:16px;gap:12px;flex-wrap:wrap}
+  .grand{font-size:13px;color:var(--muted)}
+  .grand b{font-family:'JetBrains Mono';color:var(--text)}
+  .btnrow{display:flex;gap:8px;flex-wrap:wrap}
+  .ghostbtn{background:none;border:1px solid var(--line);color:var(--muted);border-radius:9px;
+    padding:8px 14px;font-size:12.5px;cursor:pointer;transition:.15s}
+  .ghostbtn:hover{color:#fff;border-color:#3f5877}
+  .clearbtn{background:none;border:1px solid var(--line);color:var(--faint);border-radius:9px;
+    padding:8px 14px;font-size:12.5px;cursor:pointer}
+  .clearbtn:hover{color:var(--over);border-color:var(--over)}
+  .save-note{color:var(--faint);font-size:11.5px;margin-top:12px;line-height:1.6}
+
+  footer{color:var(--faint);font-size:11.5px;text-align:center;margin-top:34px;line-height:1.7}
+
+  @media (max-width:880px){
+    .grid{grid-template-columns:1fr}
+    .rollup{grid-template-columns:repeat(2,1fr)}
+    .wl-form{grid-template-columns:1fr 1fr}
+    .head-inner{align-items:flex-start}
+  }
+  @media (prefers-reduced-motion:reduce){*{scroll-behavior:auto;transition:none!important}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap head-inner">
+    <div class="titleblock">
+      <div class="badge"><span class="dot"></span> Cedar Hill Fire · General Fund 100340</div>
+      <h1>FY26 Budget <span>Status Board</span></h1>
+      <p class="sub">Where every tracked line stands against the calendar — spent, committed, incoming invoices, and what's genuinely left before September 30.</p>
+    </div>
+    <div class="fyclocks">
+      <div class="fyclock">
+        <div class="lab">Fiscal Year Elapsed</div>
+        <div class="big" id="fyPct">76.4<small>%</small></div>
+        <div class="fybar"><i id="fyFill" style="width:76.4%"></i></div>
+        <div class="note">Oct 2025 – Sep 2026 · as of Jul 6</div>
+      </div>
+      <div class="fyclock">
+        <div class="lab">Fiscal Year Spent</div>
+        <div class="big" id="spentPct">—</div>
+        <div class="fybar"><i id="spentFill" class="spend" style="width:0%"></i></div>
+        <div class="note" id="spentNote"></div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <div class="rollup" id="rollup"></div>
+
+  <div class="controls">
+    <span class="lbl">Sort</span>
+    <div class="grp" id="sortGrp">
+      <span class="chip" data-sort="used">Most used</span>
+      <span class="chip" data-sort="avail">Most $ left</span>
+      <span class="chip on" data-sort="code">Account #</span>
+    </div>
+    <span class="lbl" style="margin-left:14px">Show</span>
+    <div class="grp" id="filtGrp">
+      <span class="chip on" data-filt="all">All</span>
+      <span class="chip" data-filt="hot">Running hot</span>
+      <span class="chip" data-filt="room">Has room</span>
+    </div>
+    <span class="lbl" style="margin-left:14px">What-if</span>
+    <span class="chip" id="applyWlChip">Apply wish list to balances</span>
+    <span class="jumpbtn"><a href="#wishlist">↓ Wish list</a></span>
+  </div>
+
+  <div class="grid" id="grid"></div>
+
+  <!-- ===================== PO / INVOICE LEDGER ===================== -->
+  <section class="ledger">
+    <details class="led">
+      <summary><span class="caret">▶</span> Tracked purchase orders &amp; invoices (<span id="ledCount">0</span>)</summary>
+      <div id="ledBody"></div>
+    </details>
+  </section>
+
+  <!-- ===================== WISH LIST ===================== -->
+  <section class="ledger" id="wishlist">
+    <details class="led" open>
+      <summary><span class="caret">▶</span> End-of-Year Wish List (<span id="wlCount">0</span>)</summary>
+      <p class="desc" style="color:var(--muted);font-size:13.5px;margin:14px 0;max-width:74ch">Add anything you're hoping to buy before year-end and tag it to the line item it comes out of. Each line is checked against its <b>available balance after incoming invoices</b>. Use the <b>"Apply wish list to balances"</b> toggle above the cards to see the whole board as if everything here were purchased.</p>
+      <div id="syncBadge" class="sync off"><span class="d"></span> Saved in this browser only · not shared yet</div>
+
+      <div class="wl-form">
+        <div class="field">
+          <label for="wlName">Item</label>
+          <input id="wlName" type="text" placeholder="e.g. 2 new thermal imaging cameras" />
+        </div>
+        <div class="field">
+          <label for="wlLine">Charge to line</label>
+          <select id="wlLine"></select>
+        </div>
+        <div class="field">
+          <label for="wlCost">Cost ($)</label>
+          <input id="wlCost" type="number" min="0" step="0.01" placeholder="0.00" />
+        </div>
+        <button class="addbtn" id="wlAdd">Add</button>
+      </div>
+
+      <div id="wlOut"></div>
+
+      <div class="wl-actions">
+        <div class="grand" id="wlGrand"></div>
+        <div class="btnrow">
+          <button class="ghostbtn" id="wlExport">Export backup</button>
+          <button class="ghostbtn" id="wlImport">Import</button>
+          <input id="wlFile" type="file" accept="application/json,.json" style="display:none" />
+          <button class="clearbtn" id="wlClear">Clear list</button>
+        </div>
+      </div>
+      <div class="save-note">
+        <b>Never lose your list:</b> "Export backup" saves it as a file; "Import" loads one back in (items are added to what's here). When live sync is on, the wish list <b>and</b> the sub-budgets (e.g. under Uniforms) are shared — changes update for everyone within a second or two. Without sync, both save only in this browser.
+      </div>
+    </details>
+  </section>
+
+  <footer>
+    Built from the Munis YTD Budget Report (period 2026·10), the FY26 line-item justification workbook, and the pending/held invoice proof lists (batches 3837 &amp; 3849).<br>
+    Figures are a point-in-time snapshot for planning only — confirm against live Munis before committing funds.
+  </footer>
+</div>
+
+<!-- Firebase (compat SDK) — powers the shared, live wish list -->
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
+<script>
+/* =====================================================================
+   SHARED WISH-LIST SYNC  —  paste your Firebase keys between the { }.
+   Until real keys are here, the wish list saves only in YOUR browser.
+   Firebase console ▸ Project settings ▸ General ▸ Your apps ▸ SDK config.
+   ===================================================================== */
+const FIREBASE_CONFIG = {
+  apiKey:     "AIzaSyAPM3Jm3g-pCSlfdsuI4tBRL3HZ62TFe8s",
+  authDomain: "budget-telemetry.firebaseapp.com",
+  projectId:  "budget-telemetry",
+  appId:      "1:423779943480:web:aa156eaacfbb23079892cd"
+};
+
+/* ---------------- BUDGET DATA (Munis YTD, period 2026·10) ---------------- */
+const DATA = [
+  { code:"5001", name:"Salaries / Wages – Full Time", budget:8292176, spent:6306401.05, enc:0,
+    memo:"Full-time firefighter and staff salaries and wages (payroll).",
+    just:["Full-time salaries & wages for all fire personnel"] },
+  { code:"5002", name:"Overtime", budget:839233, spent:865458.84, enc:0,
+    memo:"All overtime pay, across these categories.",
+    just:["General overtime","Paid events","HIDTA","Emergencies / winter storm","NTE programs"] },
+  { code:"5008", name:"Tuition Reimbursement", budget:20000, spent:5784.51, enc:0,
+    memo:"Reimbursement of approved tuition for personnel.",
+    just:["Tuition reimbursement"] },
+  { code:"5101", name:"Office Supplies", budget:5000, spent:1583.29, enc:0,
+    memo:"General office consumables.",
+    just:["Office supplies (general)"] },
+  { code:"5103", name:"Computer Supplies", budget:5023, spent:1997.85, enc:0,
+    memo:"Computer hardware & supplies, including replacement laptops.",
+    just:["Computer supplies","Laptops (BC, Investigator, EMS Chief)"] },
+  { code:"5104", name:"Building Supplies", budget:11560, spent:6760.54, enc:0,
+    memo:"Cleaning and general building supplies.",
+    just:["Cleaning supplies","Building supplies (general)"] },
+  { code:"5105", name:"Other Supplies", budget:186358, spent:103761.74, enc:53879.18,
+    memo:"The big consumables line — EMS/medical, programs, and station consumables.",
+    just:["AED supplies (non-FD units)","Batteries","Citizens Fire Academy & Alumni","LAFS (FD Clown) supplies",
+      "EMS supplies / drugs / IV","Fire Explorer Program","Flags","Foam supplies","Gas detector calibration gas",
+      "Hydrant supplies","Oxygen supplies","Public education materials","Rehab supplies",
+      "Rescue equipment (consumable)","Smoke detectors (safety program)","Station supplies (towels, sanitizer)",
+      "Operative IQ tags","Teen Fire Academy","Chaplain uniforms","Chaplain station literature","CERT",
+      "Coffee service","Department awards (plaques, ribbons)"] },
+  { code:"5113", name:"Minor Apparatus", budget:100606, spent:50167.31, enc:8220.00,
+    memo:"Small durable equipment — tools, gear, and station items under the capital threshold.",
+    just:["Computer (Surface Pro) FM/Inspector","CPR equipment","Drone equipment","Fire hose","Nozzles",
+      "Fire Marshal investigation tools","Fitness equipment (new)","Flashlights","Gas detectors & sensors",
+      "Lawn equipment parts","Office equipment","Radios & equipment","Refurbish Fire Com headsets",
+      "Rescue equipment","SCBA equipment","Station furniture","Tools","Unlock kits","Vacuum cleaners",
+      "AED maintenance","Engine equip replacement (saws, PPV fan)","Stair chair (Model 6252)","Standpipe kits","Miscellaneous"] },
+  { code:"5201", name:"Maintenance – Buildings", budget:92266, spent:59310.14, enc:4373.50,
+    memo:"Building repair and upkeep services.",
+    just:["Plumbing","A/C & heat","Semi-annual extinguisher service","Door services","Roof repairs",
+      "Pest control","Lawn service","Appliance repair","Alarm / fault repair"] },
+  { code:"5374", name:"Special Services", budget:360967, spent:122503.21, enc:51946.57,
+    memo:"Contracted testing, certifications, medical, and compliance services.",
+    just:["Bond surety","Ambulance certifications (TX DSHS)","Ambulance compliance (Fitch)",
+      "Annual aerial testing (ISO/TCFP)","Annual pump test (ISO)","Bunker gear cleaning/inspection (NFPA 1851)",
+      "Annual hose test (ISO/TCFP)","Firefighter physicals (w/ bloodwork)","Grant writer",
+      "Medical control (BioTel / City of DeSoto)","Pre-employment medical / polygraph / psych",
+      "Emergicon ambulance billing","Quarterly breathing air quality test","Recruit / promotion tests",
+      "SCBA fit / flow testing","No-show fees (resiliency grant)","HIPAA audit","Arson lab testing","Notary"] },
+  { code:"5613", name:"Training", budget:127285, spent:87621.26, enc:3000.00,
+    memo:"Conferences, courses, and certifications training.",
+    just:["ALERT Conference","Ambulance Service Manager Program","American Heart CPR/ALS instructor",
+      "Arson seminar (Austin)","UTV / special events","Blue Card Command","CAPCO (EMS compliance)",
+      "CERT/CFA materials","Continuing ed – medical","CPR/AED training","Advanced fire investigation seminar",
+      "Documentation training","Driver-engineer training","Drone training","EMS compliance (Pinnacle)",
+      "EMS Today Conference","FDIC training","Fire executive management","Fire inspector training",
+      "Fire investigator training","Fit Fire Officer","Gathering of Eagles","Honor Guard","IAFC conference",
+      "IAFF/IAFC peer training","Life & Fire Safety Team (LAFS)","Live fire training","NIMS","Officer development",
+      "Operative IQ","Outside instructors","Parking / meals","Peace officer qualifying","Rescue / rope training",
+      "TX Fire Marshal Conference","TX EMS Alliance Conference","TX EMS Conference","TX Fire Commission meetings",
+      "TML Annual Conference","Training props (RIT, SCBA, Mayday, roof sim)","Wildland fire training",
+      "ESRI / TEEX conferences","Heavy vehicle training","CPSE / FSCEO executive programs","Training reimbursements"] },
+  { code:"5614", name:"Meetings & Luncheons", budget:24890, spent:20349.16, enc:0,
+    memo:"Department meetings, ceremonies, and civic-group functions.",
+    just:["Awards ceremony","Board meetings","CERT","Conferences","Fire Commission meetings","Lion's Club",
+      "NCTTRAC meetings","Officer's meetings","Promotional ceremonies","Regional fire chiefs","Rotary Club",
+      "Testing & promotions","Retirement ceremonies","Crew meals for meetings"] },
+  { code:"5616", name:"Uniforms", budget:215021, spent:111241.37, enc:16151.29,
+    memo:"All uniforms and turnout / protective gear.",
+    just:["Accountability tags","Boots","Bunker gear","Cancer awareness t-shirts","Explorers/Teen/CFA shirts & hats",
+      "Class A uniforms","Duty coats","Gloves","Helmet shields","Helmets (incl. leather)","Honor Guard equipment",
+      "Nomex hoods","Station uniforms","Uniform shirts / polos / tees","Suspenders","Wildland gear",
+      "Badges / bugles / TechGen gear","Cedar Hill staff shirts","Galls uniforms"] },
+  { code:"5623", name:"Miscellaneous", budget:1650, spent:298.89, enc:0,
+    memo:"Small catch-all items.",
+    just:["Fire Chiefs coins","Flowers"] },
+];
+
+/* ---- your 9 saved wish-list items (used as the starting list) ---- */
+const SEED_WISHES = [
+  {name:"Ice Machine", code:"5105", cost:3000},
+  {name:"Nozzles", code:"5113", cost:3700},
+  {name:"Wildland Hand Tools", code:"5113", cost:700},
+  {name:"Truck Co Tools", code:"5113", cost:1200},
+  {name:"Headset Install and Repair", code:"5113", cost:500},
+  {name:"Privacy Film", code:"5201", cost:700},
+  {name:"Training Prop", code:"5613", cost:4150},
+  {name:"SCBA Storage Cylinder Rack", code:"5613", cost:2400},
+  {name:"PPE", code:"5616", cost:26000},
+];
+
+/* ---- PO / INVOICE LEDGER — every invoice already counted, keyed by invoice # ----
+   [invoice, po, code, amount, batch, vendor, description]
+   Future reports: add ONLY invoice #s and PO #s not already here, so nothing double-counts. */
+const LEDGER = [
+  ["14330", null, "5113", 30.58,  "3837", "August Industrie", "6500 PSI hose & end"],
+  ["14245", "2620156", "5105", 1010.17, "3837", "Bound Tree Medical", "EMS supplies FY26"],
+  ["14253", "2620156", "5105", 33.90,   "3837", "Bound Tree Medical", "EMS supplies FY26"],
+  ["14254", "2620156", "5105", 1264.83, "3837", "Bound Tree Medical", "EMS supplies FY26"],
+  ["14310", null, "5105", 169.87, "3837", "Air Supply of N. TX", "Air tanks Station 3"],
+  ["14311", null, "5105", 219.44, "3837", "Air Supply of N. TX", "Air tanks Station 2"],
+  ["14312", null, "5105", 313.71, "3837", "Air Supply of N. TX", "Air tanks Station 1"],
+  ["14235", null, "5374", 2530.00, "3837", "Fire & Police Selection", "Firefighter promotion tests"],
+  ["14247", null, "5113", 492.16, "3837", "Metro Fire Apparatus", "CBRN Cap 1 canister"],
+  ["14255", null, "5105", 575.57, "3837", "Staples Business", "Station 4 supplies"],
+  ["14244", "2620038", "5105", 750.20, "3837", "Life-Assist", "EMS supplies FY26"],
+  ["14233", null, "5201", 840.45, "3837", "DBA Summit Companies", "Station 3 alarm fault repair"],
+  ["14238", null, "5616", 63.70,  "3837", "Pepwear", "Uniform shorts"],
+  ["14239", null, "5616", 125.00, "3837", "Pepwear", "O'Neill uniform shirts"],
+  ["14240", null, "5616", 150.00, "3837", "Pepwear", "Madrid uniform shirts"],
+  ["14241", null, "5616", 280.00, "3837", "Pepwear", "Cooper uniform polos"],
+  ["14242", null, "5616", 150.00, "3837", "Pepwear", "Harrison uniform tees"],
+  ["14243", null, "5616", 395.00, "3837", "Pepwear", "Holcomb uniform tees"],
+  ["14317", null, "5616", 470.40, "3837", "Pepwear", "Teen Fire Academy shirts"],
+  ["14318", null, "5616", 175.00, "3837", "Pepwear", "Fire Marshal SS & LS tees"],
+  ["14237", "2620429", "5115", 2944.93, "3837", "Offen Petroleum", "Fuel Station 211"],
+  ["14251", "2620157", "5115", 892.50,  "3837", "Offen Petroleum", "Fuel Station 213"],
+  ["14252", "2620157", "5115", 1913.56, "3837", "Offen Petroleum", "Fuel Station 213"],
+  ["14309", null, "5614", 108.62, "3837", "Chavez, Ricardo", "Snacks for ambulance crews"],
+  ["14230", "2620218", "5374", 33762.50, "3837", "Front Line Mobile Health", "Firefighter physicals"],
+  ["14375", null, "5505", 390.50, "3849", "AT&T", "iPads / hotspots June billing"],
+  ["14343", "2620156", "5105", 1211.75, "3849", "Bound Tree Medical", "EMS supplies FY26"],
+  ["14391", "2620156", "5105", 145.00,  "3849", "Bound Tree Medical", "EMS supplies FY26"],
+  ["14394", null, "5205", 641.88, "3849", "Carlisle Power", "Generator svc (dept 100350)"],
+  ["14381", null, "5113", 225.00, "3849", "Fire Com", "Radio headset repair"],
+  ["14410", "2620418", "5616", 373.85, "3849", "Nafeco", "Leather helmets"],
+  ["14396", null, "5373", 171.80, "3849", "Stericycle", "Sterisafe OSHA compliance"],
+  ["14395", null, "5113", 2149.00, "3849", "Metro Fire Apparatus", "Standpipe kit w/ bag"],
+  ["14382", null, "5104", 113.30, "3849", "Staples Business", "Station 4 supplies"],
+  ["14386", null, "5104", 147.26, "3849", "Staples Business", "Station 1 supplies"],
+  ["14388", null, "5101", 88.30,  "3849", "Staples Business", "Office supplies"],
+  ["14376", null, "5616", 585.50, "3849", "Pepwear", "Uniform polos & tees"],
+  ["14378", "2620179", "5204", 3150.54, "3849", "Siddons-Martin", "FY26 vehicle maintenance"],
+  ["14379", "2620179", "5204", 2010.89, "3849", "Siddons-Martin", "FY26 vehicle maintenance"],
+  ["14374", null, "5616", 16.99,  "3849", "Galls", "Uniform bugles"],
+  ["14342", "2620038", "5105", 62.40,   "3849", "Life-Assist", "EMS supplies FY26"],
+  ["14392", "2620038", "5105", 2029.66, "3849", "Life-Assist", "EMS supplies FY26"],
+  ["14462", null, "5613", 900.00, "3849", "Fire in Texas", "Fit Fire Officer"],
+  ["14435", null, "5115", 90.63,  "3849", "Carter, Britnie", "Mileage reimbursement"],
+  ["14389", "2620404", "5113", 1600.00, "3849", "AED123", "Lite AED service plan"],
+  ["14373", null, "5613", 175.00, "3849", "Harrell, Bryan", "Training reimbursement"],
+  ["REQ-EDELRID",   null, "5113", 2998.49, "APR 7/6", "Requisition", "Edelrid harnesses (approved 7/6)"],
+  ["REQ-ROPE",      null, "5113", 2445.92, "APR 7/6", "Requisition", "Rope accessories (approved 7/6)"],
+  ["INT-185773901", null, "5505", 110.57,  "APR 7/6", "AT&T", "Fire business internet Acct#185773901"],
+  ["PEST-70626",    null, "5201", 1385.00, "APR 7/6", "Pest control vendor", "Pest control services"],
+].map(a=>({doc:a[0], po:a[1], code:a[2], amt:a[3], batch:a[4], vendor:a[5], desc:a[6]}));
+
+const TRACKED = new Set(DATA.map(d=>d.code));
+/* derive incoming per tracked line from the ledger (PO invoices = already encumbered; direct = new) */
+const PEND_BY_CODE = {};
+LEDGER.forEach(r=>{
+  if(!TRACKED.has(r.code)) return;
+  const b = PEND_BY_CODE[r.code] || (PEND_BY_CODE[r.code]={d:0,p:0});
+  if(r.po) b.p += r.amt; else b.d += r.amt;
+});
+
+/* -------- Fiscal-year clock (anchored to the 7/6/2026 data date) -------- */
+const fyStart = new Date(2025,9,1), fyEnd = new Date(2026,9,1), asOf = new Date(2026,6,6);
+const fyPct = ((asOf - fyStart)/(fyEnd - fyStart))*100;
+document.getElementById('fyPct').innerHTML = fyPct.toFixed(1)+'<small>%</small>';
+document.getElementById('fyFill').style.width = fyPct.toFixed(1)+'%';
+
+/* Dept-wide Fire fund totals (Munis grand total) for the "Fiscal Year Spent" gauge */
+const FUND = { budget:15673099, spent:11783403.29, enc:498273.56 };
+const spentPctVal = FUND.spent/FUND.budget*100;
+const usedPctVal  = (FUND.spent+FUND.enc)/FUND.budget*100;
+document.getElementById('spentPct').innerHTML = spentPctVal.toFixed(1)+'<small>%</small>';
+const spentFill = document.getElementById('spentFill');
+spentFill.style.width = Math.min(spentPctVal,100).toFixed(1)+'%';
+if(spentPctVal > fyPct) spentFill.classList.add('over');
+const dpp = spentPctVal - fyPct;
+const pace = Math.abs(dpp)<0.5 ? 'on pace' : (dpp<0 ? Math.abs(dpp).toFixed(1)+' pts under' : dpp.toFixed(1)+' pts over');
+document.getElementById('spentNote').textContent =
+  '$'+(FUND.spent/1e6).toFixed(2)+'M · '+usedPctVal.toFixed(1)+'% w/ enc · '+pace;
+
+/* -------- helpers -------- */
+const money = n => n.toLocaleString('en-US',{style:'currency',currency:'USD',maximumFractionDigits:0});
+const money2 = n => n.toLocaleString('en-US',{style:'currency',currency:'USD',minimumFractionDigits:2,maximumFractionDigits:2});
+const pct = n => n.toFixed(1)+'%';
+const clamp = (v,a,b)=>Math.max(a,Math.min(v,b));
+function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+
+/* -------- enrich rows (incoming from ledger) -------- */
+function enrich(d){
+  const pd = PEND_BY_CODE[d.code] || {d:0,p:0};
+  const available = d.budget - d.spent - d.enc;
+  const effAvail = available - pd.d;
+  const usedPct = d.budget>0 ? ((d.spent+d.enc)/d.budget)*100 : 0;
+  const spentPct = d.budget>0 ? (d.spent/d.budget)*100 : 0;
+  const encPct = d.budget>0 ? (d.enc/d.budget)*100 : 0;
+  const pendPct = d.budget>0 ? (pd.d/d.budget)*100 : 0;
+  let status, pillTxt;
+  if(available < 0 || usedPct >= 100){ status='over'; pillTxt='Over budget'; }
+  else if(usedPct > fyPct + 8){ status='hot'; pillTxt='Running hot'; }
+  else if(usedPct < fyPct - 8){ status='good'; pillTxt='Room available'; }
+  else { status='pace'; pillTxt='On pace'; }
+  return {...d, pend:pd, available, effAvail, usedPct, spentPct, encPct, pendPct, status, pillTxt};
+}
+const ROWS = DATA.map(enrich);
+
+/* -------- shared state -------- */
+let applyWL=false;          // "apply wish list to balances" toggle
+let WLC={};                 // wishlist $ per code (only populated when applyWL)
+let wishes=[], SYNCED=false, db=null;
+function wlByCode(){ const m={}; wishes.forEach(w=>{ m[w.code]=(m[w.code]||0)+(Number(w.cost)||0); }); return m; }
+
+/* -------- sub-budget config (browser-local) -------- */
+const CFG_KEY='chfd_fy26_config_v1';
+let config={sub:{}};
+const DEFAULT_SUB={ "5616":[{name:"Bunker Gear Budget",budget:96000,spent:0},{name:"Uniform Budget",budget:0,spent:0}] };
+function ensureSubDefaults(){
+  if(!config.sub) config.sub={};
+  // migrate old format {name, amount} -> {name, budget, spent}
+  for(const code in config.sub){
+    config.sub[code]=(config.sub[code]||[]).map(s=>{
+      if(s && s.budget===undefined && s.amount!==undefined) return {name:s.name||'', budget:Number(s.amount)||0, spent:0};
+      return {name:s.name||'', budget:Number(s.budget)||0, spent:Number(s.spent)||0};
+    });
+  }
+  if(!config.sub['5616'] || !config.sub['5616'].length) config.sub['5616']=DEFAULT_SUB['5616'].map(x=>({...x}));
+}
+function loadConfig(){ try{ const s=localStorage.getItem(CFG_KEY); if(s) config=JSON.parse(s)||{sub:{}}; }catch(e){} ensureSubDefaults(); }
+function saveConfig(){
+  try{ localStorage.setItem(CFG_KEY, JSON.stringify(config)); }catch(e){}
+  if(SYNCED && db){
+    db.collection('config').doc('main').set({sub:config.sub}).catch(e=>console.error('config sync failed:',e));
+  }
+}
+/* live-sync sub-budgets when connected: last write wins; don't clobber a panel mid-edit */
+function watchConfig(){
+  if(!SYNCED || !db) return;
+  db.collection('config').doc('main').onSnapshot(doc=>{
+    if(!doc.exists) return;
+    const remote=doc.data();
+    if(!remote || !remote.sub) return;
+    config.sub=remote.sub; ensureSubDefaults();
+    try{ localStorage.setItem(CFG_KEY, JSON.stringify(config)); }catch(e){}
+    for(const code in config.sub){
+      const body=document.getElementById('sb-body-'+code);
+      if(body && !body.contains(document.activeElement)) body.innerHTML=subBodyInner(code);
+    }
+  }, e=>console.error('config watch failed:',e));
+}
+
+/* -------- rollup -------- */
+function renderRollup(){
+  const wlc = applyWL ? wlByCode() : {};
+  const t = ROWS.reduce((a,r)=>({b:a.b+r.budget,s:a.s+r.spent,e:a.e+r.enc,p:a.p+r.pend.d,w:a.w+(wlc[r.code]||0)}),
+                        {b:0,s:0,e:0,p:0,w:0});
+  const avail = t.b - t.s - t.e - t.p - (applyWL? t.w : 0);
+  const sub = applyWL
+    ? `after ${money(t.p)} incoming + ${money(t.w)} wish list`
+    : `after ${money(t.p)} incoming invoices`;
+  document.getElementById('rollup').innerHTML = `
+    <div class="stat"><div class="k">Tracked budget (14 lines)</div><div class="v">${money(t.b)}</div></div>
+    <div class="stat"><div class="k">Spent · ${pct(t.s/t.b*100)} of budget</div><div class="v small">${money(t.s)}</div></div>
+    <div class="stat enc"><div class="k">Encumbered (committed)</div><div class="v small">${money(t.e)}</div></div>
+    <div class="stat avail ${applyWL?'wl-on':''}"><div class="k">Available to spend</div><div class="v">${money(avail)}</div>
+      <div class="subv">${sub}</div></div>`;
+}
+
+/* -------- card -------- */
+function paceNote(r){
+  const diff = r.usedPct - fyPct;
+  if(r.status==='over') return `<span class="ahead">Over budget by ${money(Math.abs(r.available))}.</span> Spending has passed the full appropriation.`;
+  const a = Math.abs(diff).toFixed(0);
+  if(diff > 4) return `Running <b class="ahead">${a} pts ahead</b> of the calendar — using budget faster than time.`;
+  if(diff < -4) return `Sitting <b class="behind">${a} pts under</b> the calendar — money is available relative to pace.`;
+  return `<b class="on">Tracking with the calendar</b> — spending roughly matches the year elapsed.`;
+}
+
+function sbBarHtml(s){
+  const b=Number(s.budget)||0, sp=Number(s.spent)||0;
+  const p = b>0 ? sp/b*100 : (sp>0?100:0);
+  const w = clamp(p,0,100);
+  const cls = p>=100 ? 'over' : (p>fyPct+8 ? 'hot' : '');
+  const left = b-sp;
+  return `<div class="sb-bar"><i class="${cls}" style="width:${w}%"></i></div>
+    <div class="sb-cap">
+      <span>Spent <b>${money(sp)}</b> of <b>${money(b)}</b> · ${p.toFixed(1)}%</span>
+      <span class="left ${left<0?'neg':'pos'}">${left<0? money(Math.abs(left))+' over' : money(left)+' left'}</span>
+    </div>`;
+}
+function subBodyInner(code){
+  const row = ROWS.find(r=>r.code===code) || {budget:0};
+  const list = (config.sub && config.sub[code]) || [];
+  const alloc = list.reduce((a,s)=>a+(Number(s.budget)||0),0);
+  const unalloc = row.budget - alloc;
+  const items = list.map((s,i)=>`
+    <div class="sb-item">
+      <div class="sb-row">
+        <input class="sb-name" data-code="${code}" data-i="${i}" value="${escapeHtml(s.name)}" placeholder="Sub-budget name"/>
+        <span class="sb-field"><label>Budget $</label>
+          <input class="sb-amt sb-budget" type="number" min="0" step="500" data-code="${code}" data-i="${i}" value="${Number(s.budget)||0}"/></span>
+        <span class="sb-field"><label>Spent $</label>
+          <input class="sb-amt sb-spent" type="number" min="0" step="100" data-code="${code}" data-i="${i}" value="${Number(s.spent)||0}"/></span>
+        <button class="sb-del" data-code="${code}" data-i="${i}" title="Remove">✕</button>
+      </div>
+      <div class="sb-barwrap" id="sb-bar-${code}-${i}">${sbBarHtml(s)}</div>
+    </div>`).join('');
+  return `${items}
+    <button class="sb-add" data-code="${code}">+ Add sub-budget</button>
+    <div class="sb-sum">Sub-budgets total <b>${money(alloc)}</b> of the ${money(row.budget)} line ·
+      <b class="${unalloc<0?'neg':''}">${money(unalloc)}</b> ${unalloc<0?'over-allocated':'unallocated'}</div>`;
+}
+function subBudget(r){
+  if(!DEFAULT_SUB[r.code]) return '';
+  return `
+    <details class="disc sub-disc">
+      <summary><span class="caret">▶</span> Sub-budgets — Bunker Gear vs Uniforms</summary>
+      <div class="sub-body" id="sb-body-${r.code}">${subBodyInner(r.code)}</div>
+    </details>`;
+}
+
+function card(r){
+  const wl = WLC[r.code]||0;
+  const sp = clamp(r.spentPct,0,100);
+  const en = clamp(r.encPct,0,100-sp);
+  const pe = clamp(r.pendPct,0,100-sp-en);
+  const wlPct = r.budget>0 ? wl/r.budget*100 : 0;
+  const we = clamp(wlPct,0,100-sp-en-pe);
+  const postAvail = r.effAvail - wl;
+  const bigAvail = applyWL ? postAvail : r.available;
+  const availCls = bigAvail < 0 ? 'neg' : 'pos';
+
+  let note='';
+  if(applyWL){
+    const parts=[];
+    if(r.pend.d>0) parts.push(`−${money(r.pend.d)} incoming`);
+    if(wl>0) parts.push(`<span class="wl">−${money(wl)} wish list</span>`);
+    if(parts.length) note = `<div class="afterpend">${parts.join(' · ')} → <b>${money(postAvail)}</b> left</div>`;
+  } else if(r.pend.d>0){
+    note = `<div class="afterpend">− ${money(r.pend.d)} incoming → <b>${money(r.effAvail)}</b> left</div>`;
+  }
+
+  const tags = r.just.map(j=>`<span class="tag">${j}</span>`).join('');
+  const hasPend = (r.pend.d + r.pend.p) > 0;
+  const pendLegend = r.pend.d>0 ? `<span class="li"><span class="sw pend"></span>Incoming <b>${money(r.pend.d)}</b></span>` : '';
+  const wishLegend = (applyWL && wl>0) ? `<span class="li"><span class="sw wish"></span>Wish list <b>${money(wl)}</b></span>` : '';
+  let pendNote='';
+  if(hasPend){
+    const parts=[];
+    if(r.pend.d>0) parts.push(`<b>${money(r.pend.d)}</b> new (direct)`);
+    if(r.pend.p>0) parts.push(`<b>${money(r.pend.p)}</b> already encumbered`);
+    pendNote = `<div class="pending-note">Incoming unpaid invoices: ${parts.join(' · ')}. `
+      + (r.pend.d>0 ? `The new portion is subtracted from what's left above.` : `Already reflected in the encumbered figure.`)
+      + `</div>`;
+  }
+
+  return `
+  <div class="card st-${r.status}">
+    <div class="ctop">
+      <div class="ctitle"><span class="code">100340 · ${r.code}</span><span class="name">${r.name}</span></div>
+      <span class="pill ${r.status}">${r.pillTxt}</span>
+    </div>
+    <div class="figs">
+      <div class="fig"><div class="flab">Budget used</div><div class="used">${pct(r.usedPct)}</div></div>
+      <div class="fig right">
+        <div class="flab">${applyWL?'Available (after wish list)':'Available'}</div>
+        <div class="avail ${availCls}">${money(bigAvail)}</div>
+        ${note}
+      </div>
+    </div>
+    <div class="barwrap">
+      <div class="bar">
+        <div class="seg spent" style="width:${sp}%"></div>
+        <div class="seg enc" style="width:${en}%"></div>
+        <div class="seg pend" style="width:${pe}%"></div>
+        ${(applyWL && we>0)?`<div class="seg wish" style="width:${we}%"></div>`:''}
+      </div>
+      <div class="fymark" style="left:${Math.min(fyPct,100)}%"></div>
+    </div>
+    <div class="legend">
+      <span class="li"><span class="sw spent"></span>Spent <b>${money(r.spent)}</b></span>
+      <span class="li"><span class="sw enc"></span>Encumbered <b>${money(r.enc)}</b></span>
+      ${pendLegend}${wishLegend}
+      <span class="li"><span class="sw avail"></span>of <b>${money(r.budget)}</b></span>
+      <span class="li"><span class="sw pacemark"></span>FY pace ${fyPct.toFixed(0)}%</span>
+    </div>
+    ${pendNote}
+    <div class="pace-note">${paceNote(r)}</div>
+    <div class="discs">
+    ${subBudget(r)}
+    <details class="disc">
+      <summary><span class="caret">▶</span> What can I buy from this line? (${r.just.length})</summary>
+      <div class="just-body"><p class="memo">${r.memo}</p><div class="tags">${tags}</div></div>
+    </details>
+    </div>
+  </div>`;
+}
+
+/* -------- grid -------- */
+let sortMode='code', filtMode='all';
+function renderGrid(){
+  WLC = applyWL ? wlByCode() : {};
+  let rows=[...ROWS];
+  if(filtMode==='hot') rows=rows.filter(r=>r.status==='hot'||r.status==='over');
+  if(filtMode==='room') rows=rows.filter(r=>r.status==='good'||r.status==='pace');
+  if(sortMode==='used') rows.sort((a,b)=>b.usedPct-a.usedPct);
+  if(sortMode==='avail') rows.sort((a,b)=>b.effAvail-a.effAvail);
+  if(sortMode==='code') rows.sort((a,b)=>a.code.localeCompare(b.code));
+  document.getElementById('grid').innerHTML = rows.map(card).join('') ||
+    `<div class="wl-empty" style="grid-column:1/-1">No lines match that filter.</div>`;
+}
+
+/* sub-budget editing (delegated, once) */
+const gridEl=document.getElementById('grid');
+gridEl.addEventListener('input',e=>{
+  const t=e.target;
+  if(!(t.classList.contains('sb-name')||t.classList.contains('sb-amt'))) return;
+  const code=t.dataset.code, i=+t.dataset.i;
+  if(!config.sub[code] || !config.sub[code][i]) return;
+  const s=config.sub[code][i];
+  if(t.classList.contains('sb-name')) s.name=t.value;
+  else if(t.classList.contains('sb-budget')) s.budget=Number(t.value)||0;
+  else if(t.classList.contains('sb-spent')) s.spent=Number(t.value)||0;
+  saveConfig();
+  const bar=document.getElementById(`sb-bar-${code}-${i}`);
+  if(bar) bar.innerHTML=sbBarHtml(s);
+  const row=ROWS.find(r=>r.code===code)||{budget:0};
+  const list=config.sub[code]; const alloc=list.reduce((a,x)=>a+(Number(x.budget)||0),0);
+  const unalloc=row.budget-alloc;
+  const body=document.getElementById('sb-body-'+code);
+  const sum=body && body.querySelector('.sb-sum');
+  if(sum) sum.innerHTML=`Sub-budgets total <b>${money(alloc)}</b> of the ${money(row.budget)} line · `
+    +`<b class="${unalloc<0?'neg':''}">${money(unalloc)}</b> ${unalloc<0?'over-allocated':'unallocated'}`;
+});
+gridEl.addEventListener('click',e=>{
+  const add=e.target.closest('.sb-add'), del=e.target.closest('.sb-del');
+  if(add){ const code=add.dataset.code; (config.sub[code]=config.sub[code]||[]).push({name:'',budget:0,spent:0}); saveConfig();
+    const b=document.getElementById('sb-body-'+code); if(b) b.innerHTML=subBodyInner(code); }
+  if(del){ const code=del.dataset.code, i=+del.dataset.i; if(config.sub[code]) config.sub[code].splice(i,1); saveConfig();
+    const b=document.getElementById('sb-body-'+code); if(b) b.innerHTML=subBodyInner(code); }
+});
+
+document.getElementById('sortGrp').addEventListener('click',e=>{
+  const c=e.target.closest('.chip'); if(!c)return;
+  [...e.currentTarget.children].forEach(x=>x.classList.remove('on'));
+  c.classList.add('on'); sortMode=c.dataset.sort; renderGrid();
+});
+document.getElementById('filtGrp').addEventListener('click',e=>{
+  const c=e.target.closest('.chip'); if(!c)return;
+  [...e.currentTarget.children].forEach(x=>x.classList.remove('on'));
+  c.classList.add('on'); filtMode=c.dataset.filt; renderGrid();
+});
+document.getElementById('applyWlChip').addEventListener('click',e=>{
+  applyWL=!applyWL; e.currentTarget.classList.toggle('on',applyWL);
+  renderRollup(); renderGrid();
+});
+
+/* -------- ledger panel -------- */
+function renderLedger(){
+  const total = LEDGER.reduce((a,r)=>a+r.amt,0);
+  const pos = [...new Set(LEDGER.filter(r=>r.po).map(r=>r.po))].sort();
+  let dNew=0,dEnc=0;
+  LEDGER.forEach(r=>{ if(TRACKED.has(r.code)){ if(r.po) dEnc+=r.amt; else dNew+=r.amt; } });
+  document.getElementById('ledCount').textContent = LEDGER.length;
+  const rows = LEDGER.map(r=>{
+    const tk=TRACKED.has(r.code);
+    return `<tr class="${tk?'':'untk'}">
+      <td class="mono">${r.doc}</td><td class="mono">${r.po||'—'}</td>
+      <td class="mono">${r.code}${tk?'':' *'}</td><td class="mono ra">${money2(r.amt)}</td>
+      <td>${escapeHtml(r.vendor)} — ${escapeHtml(r.desc)}</td><td class="mono">${r.batch}</td></tr>`;
+  }).join('');
+  document.getElementById('ledBody').innerHTML = `
+    <p class="led-sum">Tracking <b>${LEDGER.length}</b> invoices (total <b>${money2(total)}</b>) and <b>${pos.length}</b> purchase orders from batches 3837 &amp; 3849.
+      Of these, <b>${money2(dNew)}</b> in direct invoices reduces your tracked balances; <b>${money2(dEnc)}</b> is already inside encumbrances.
+      Lines marked <b>*</b> aren't among the 14 tracked lines.</p>
+    <p class="led-note">Double-count guard: when you send future reports, only invoice numbers and PO numbers <b>not already listed here</b> get added — the same PO or invoice is never counted twice.</p>
+    <div class="led-scroll"><table class="led-tbl">
+      <thead><tr><th>Invoice</th><th>PO</th><th>Line</th><th>Amount</th><th>Vendor — Description</th><th>Batch</th></tr></thead>
+      <tbody>${rows}</tbody></table></div>
+    <div class="led-pos"><b>Purchase orders tracked:</b> ${pos.map(p=>`<span class="po">${p}</span>`).join('')}</div>`;
+}
+
+/* ===================== WISH LIST ===================== */
+const AVAIL = Object.fromEntries(ROWS.map(r=>[r.code,{name:r.name, available:r.effAvail, pend:r.pend.d}]));
+const wlLine=document.getElementById('wlLine');
+wlLine.innerHTML = ROWS.map(r=>`<option value="${r.code}">${r.code} · ${r.name} — ${money(r.effAvail)} left</option>`).join('');
+
+const LS_KEY='chfd_fy26_wishlist_v1';
+function looksConfigured(c){ return c && c.apiKey && c.projectId && !/PASTE/i.test(c.apiKey) && !/PASTE/i.test(c.projectId); }
+function setSyncBadge(){
+  const b=document.getElementById('syncBadge'); if(!b) return;
+  if(SYNCED){ b.className='sync on'; b.innerHTML='<span class="d"></span> Live sync on · shared with everyone who opens this page'; }
+  else { b.className='sync off'; b.innerHTML='<span class="d"></span> Saved in this browser only · not shared yet'; }
+}
+if(looksConfigured(FIREBASE_CONFIG) && window.firebase){
+  try{
+    firebase.initializeApp(FIREBASE_CONFIG);
+    db=firebase.firestore(); SYNCED=true;
+    db.collection('wishlist').orderBy('createdAt','asc').onSnapshot(
+      snap=>{ wishes=snap.docs.map(d=>({id:d.id, ...d.data()})); renderWishes(); },
+      err=>console.error('Sync read failed:',err));
+  }catch(e){ console.error('Firebase init failed:',e); SYNCED=false; }
+}
+if(!SYNCED){
+  try{ const s=localStorage.getItem(LS_KEY); if(s) wishes=JSON.parse(s)||[]; }catch(e){}
+  if(!wishes.length){ wishes = SEED_WISHES.map((w,i)=>({id:'seed'+i, ...w})); saveLocal(); }
+}
+function saveLocal(){ if(SYNCED) return; try{ localStorage.setItem(LS_KEY,JSON.stringify(wishes)); }catch(e){} }
+
+function addWish(){
+  const name=document.getElementById('wlName').value.trim();
+  const code=wlLine.value;
+  const cost=parseFloat(document.getElementById('wlCost').value);
+  if(!name || isNaN(cost) || cost<0){ document.getElementById('wlName').focus(); return; }
+  if(SYNCED){
+    db.collection('wishlist').add({name, code, cost, createdAt: firebase.firestore.FieldValue.serverTimestamp()})
+      .catch(e=>{ console.error(e); alert('Could not save to the shared list — check your connection.'); });
+  } else { wishes.push({id:'l'+Date.now()+Math.random(), name, code, cost}); saveLocal(); renderWishes(); }
+  document.getElementById('wlName').value=''; document.getElementById('wlCost').value=''; document.getElementById('wlName').focus();
+}
+document.getElementById('wlAdd').addEventListener('click',addWish);
+['wlName','wlCost'].forEach(id=>document.getElementById(id).addEventListener('keydown',e=>{if(e.key==='Enter')addWish();}));
+
+function removeWish(id){
+  if(SYNCED){ db.collection('wishlist').doc(id).delete().catch(e=>console.error(e)); }
+  else { wishes=wishes.filter(w=>String(w.id)!==String(id)); saveLocal(); renderWishes(); }
+}
+document.getElementById('wlClear').addEventListener('click',()=>{
+  if(!wishes.length) return;
+  if(SYNCED){
+    if(confirm('Clear the entire shared list for everyone? This cannot be undone.')){
+      const batch=db.batch(); wishes.forEach(w=>batch.delete(db.collection('wishlist').doc(w.id))); batch.commit().catch(e=>console.error(e));
+    }
+  } else { if(confirm('Clear the wish list?')){ wishes=[]; saveLocal(); renderWishes(); } }
+});
+
+document.getElementById('wlExport').addEventListener('click',()=>{
+  const items = wishes.map(({name,code,cost})=>({name,code,cost}));
+  const blob = new Blob([JSON.stringify({exported:new Date().toISOString(), items}, null, 2)],{type:'application/json'});
+  const url=URL.createObjectURL(blob); const a=document.createElement('a');
+  a.href=url; a.download='fire-wishlist-'+new Date().toISOString().slice(0,10)+'.json';
+  document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+});
+document.getElementById('wlImport').addEventListener('click',()=>document.getElementById('wlFile').click());
+document.getElementById('wlFile').addEventListener('change',e=>{
+  const file=e.target.files[0]; if(!file) return;
+  const reader=new FileReader();
+  reader.onload=()=>{
+    try{
+      const parsed=JSON.parse(reader.result);
+      const raw = Array.isArray(parsed) ? parsed : (parsed.items||[]);
+      const clean = raw.filter(it=>it && typeof it.name==='string' && it.code!=null && it.cost!=null && AVAIL[String(it.code)])
+                       .map(it=>({name:String(it.name), code:String(it.code), cost:Number(it.cost)||0}));
+      if(!clean.length){ alert('No valid wish-list items (matching a tracked line) were found in that file.'); return; }
+      if(SYNCED){
+        const batch=db.batch();
+        clean.forEach(it=>batch.set(db.collection('wishlist').doc(), {...it, createdAt: firebase.firestore.FieldValue.serverTimestamp()}));
+        batch.commit().catch(err=>{console.error(err);alert('Import could not be saved to the shared list.');});
+      } else { clean.forEach(it=>wishes.push({id:'l'+Date.now()+Math.random(), ...it})); saveLocal(); renderWishes(); }
+    }catch(err){ console.error(err); alert('That file could not be read — it must be a wish-list JSON export.'); }
+  };
+  reader.readAsText(file); e.target.value='';
+});
+
+function renderWishes(){
+  const out=document.getElementById('wlOut'), grand=document.getElementById('wlGrand');
+  const cnt=document.getElementById('wlCount'); if(cnt) cnt.textContent=wishes.length;
+  if(!wishes.length){
+    out.innerHTML=`<div class="wl-empty">Nothing on the list yet. Add an item above, or use Import to load a saved backup.</div>`;
+    grand.innerHTML=''; if(applyWL){ renderRollup(); renderGrid(); } return;
+  }
+  const groups={};
+  wishes.forEach(w=>{ (groups[w.code]=groups[w.code]||[]).push(w); });
+  let html='', totalReq=0;
+  Object.keys(groups).sort().forEach(code=>{
+    const items=groups[code];
+    const info=AVAIL[code]||{name:code,available:0,pend:0};
+    const avail=info.available;
+    const req=items.reduce((a,w)=>a+(Number(w.cost)||0),0);
+    totalReq+=req;
+    const bal=avail-req;
+    let vcls,vtxt;
+    if(bal<0){vcls='over';vtxt='Over by '+money2(Math.abs(bal));}
+    else if(bal<avail*0.1){vcls='tight';vtxt='Fits — tight';}
+    else{vcls='fit';vtxt='Fits';}
+    const incNote = info.pend>0 ? `<span class="inc"> · incl. −${money(info.pend)} incoming</span>` : '';
+    html+=`<div class="wl-group">
+      <div class="wl-ghead">
+        <div class="gname">${info.name}<small>${code} · ${money(avail)} available${incNote}</small></div>
+        <div class="verdict ${vcls}">${vtxt}</div>
+      </div>
+      ${items.map(w=>`<div class="wl-item">
+          <span>${escapeHtml(w.name)}</span>
+          <span style="display:flex;align-items:center;gap:12px">
+            <span class="cost">${money2(Number(w.cost)||0)}</span>
+            <span class="x" data-id="${w.id}" title="Remove">✕</span></span>
+        </div>`).join('')}
+      <div class="wl-sum">
+        <div class="pair"><span class="pk">Requested</span><span class="pv">${money2(req)}</span></div>
+        <div class="pair"><span class="pk">Available</span><span class="pv">${money2(avail)}</span></div>
+        <div class="pair"><span class="pk">Balance after</span><span class="pv ${bal<0?'neg':'pos'}">${money2(bal)}</span></div>
+      </div></div>`;
+  });
+  out.innerHTML=html;
+  grand.innerHTML=`<b>${wishes.length}</b> item${wishes.length>1?'s':''} · total requested <b>${money2(totalReq)}</b>`;
+  out.querySelectorAll('.x').forEach(x=>x.addEventListener('click',()=>removeWish(x.dataset.id)));
+  if(applyWL){ renderRollup(); renderGrid(); }
+}
+
+/* -------- init -------- */
+loadConfig();
+watchConfig();
+renderLedger();
+renderRollup();
+renderGrid();
+setSyncBadge();
+renderWishes();
+</script>
+</body>
+</html>
