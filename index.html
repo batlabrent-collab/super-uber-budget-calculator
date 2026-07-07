@@ -331,6 +331,14 @@
     </details>
   </section>
 
+  <!-- ===================== REVENUE ===================== -->
+  <section class="ledger">
+    <details class="led">
+      <summary><span class="caret">▶</span> Revenue (<span id="revCount">0</span>)</summary>
+      <div id="revBody"></div>
+    </details>
+  </section>
+
   <!-- ===================== WISH LIST ===================== -->
   <section class="ledger" id="wishlist">
     <details class="led" open>
@@ -432,6 +440,16 @@ const DATA = [
     memo:"Building repair and upkeep services.",
     just:["Plumbing","A/C & heat","Semi-annual extinguisher service","Door services","Roof repairs",
       "Pest control","Lawn service","Appliance repair","Alarm / fault repair"] },
+  { code:"5204", name:"Maintenance – Automobiles", budget:235220, spent:135288.04, enc:138413.35,
+    memo:"Vehicle repair and upkeep — apparatus and fleet.",
+    just:["Auto parts (LaFrance)","Siddons-Martin unplanned repairs","Siddons-Martin scheduled maintenance","Tires"] },
+  { code:"5205", name:"Maintenance – Equipment", budget:79716, spent:69624.39, enc:0,
+    memo:"Service and repair of equipment — the maintain side of gear (buying new goes to 5113).",
+    just:["UTV maintenance","Extractor maintenance","Fitness equipment maintenance","Flashlight repairs",
+      "Ice machines (Stations 211–214)","LAFS equipment (Freddie & trailer)","Lawn mower maintenance",
+      "Stryker LifePak 15 & Lucas device","Nozzle maintenance","Rescue tool maintenance",
+      "SCBA compressor maintenance","SCBA maintenance","Small equipment (chain saws, chop saws, fans)",
+      "Stryker stretchers, stair chairs & Powerload","Thermal imaging cameras"] },
   { code:"5374", name:"Special Services", budget:360967, spent:122503.21, enc:51946.57,
     memo:"Contracted testing, certifications, medical, and compliance services.",
     just:["Bond surety","Ambulance certifications (TX DSHS)","Ambulance compliance (Fitch)",
@@ -514,7 +532,7 @@ const LEDGER = [
   ["14375", null, "5505", 390.50, "3849", "AT&T", "iPads / hotspots June billing"],
   ["14343", "2620156", "5105", 1211.75, "3849", "Bound Tree Medical", "EMS supplies FY26"],
   ["14391", "2620156", "5105", 145.00,  "3849", "Bound Tree Medical", "EMS supplies FY26"],
-  ["14394", null, "5205", 641.88, "3849", "Carlisle Power", "Generator svc (dept 100350)"],
+  ["14394", null, "100350-5205", 641.88, "3849", "Carlisle Power", "Generator svc — dept 100350, not Fire 100340"],
   ["14381", null, "5113", 225.00, "3849", "Fire Com", "Radio headset repair"],
   ["14410", "2620418", "5616", 373.85, "3849", "Nafeco", "Leather helmets"],
   ["14396", null, "5373", 171.80, "3849", "Stericycle", "Sterisafe OSHA compliance"],
@@ -539,6 +557,24 @@ const LEDGER = [
 ].map(a=>({doc:a[0], po:a[1], code:a[2], amt:a[3], batch:a[4], vendor:a[5], desc:a[6]}));
 
 const TRACKED = new Set(DATA.map(d=>d.code));
+/* ---- REVENUE — positive money applied to a line (reimbursements, offsets) ----
+   Baseline entries below + entries added on the page (config.revenue), minus closed. */
+const REVENUE = [
+  {doc:"REV-5204-OFFSET", code:"5204", amt:368709.00, batch:"7/2026", vendor:"Revenue payment", desc:"Offset for vehicle maintenance overage"},
+];
+let REV_BY_CODE = {};
+function revenueAll(){
+  const manual=(config.revenue||[]).map(m=>({...m, manual:true}));
+  return REVENUE.map(r=>({...r})).concat(manual);
+}
+function computeRev(){
+  REV_BY_CODE={};
+  revenueAll().forEach(r=>{
+    if(isClosed(r.doc)) return;
+    if(!TRACKED.has(r.code)) return;
+    REV_BY_CODE[r.code]=(REV_BY_CODE[r.code]||0)+r.amt;
+  });
+}
 /* Effective ledger = baseline entries above + entries added on the page (config.manual),
    minus anything marked closed (config.closed). Closing an invoice removes it from
    "incoming" — do that when it's been paid (now in Munis spent) or cancelled. */
@@ -587,23 +623,26 @@ function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':
 /* -------- enrich rows (incoming from ledger) -------- */
 function enrich(d){
   const pd = PEND_BY_CODE[d.code] || {d:0,p:0};
-  const available = d.budget - d.spent - d.enc;
+  const rev = REV_BY_CODE[d.code] || 0;
+  const budget = d.budget + rev;                 // effective budget incl. applied revenue
+  const available = budget - d.spent - d.enc;
   const effAvail = available - pd.d;
-  const usedPct = d.budget>0 ? ((d.spent+d.enc)/d.budget)*100 : 0;
-  const spentPct = d.budget>0 ? (d.spent/d.budget)*100 : 0;
-  const encPct = d.budget>0 ? (d.enc/d.budget)*100 : 0;
-  const pendPct = d.budget>0 ? (pd.d/d.budget)*100 : 0;
+  const usedPct = budget>0 ? ((d.spent+d.enc)/budget)*100 : 0;
+  const spentPct = budget>0 ? (d.spent/budget)*100 : 0;
+  const encPct = budget>0 ? (d.enc/budget)*100 : 0;
+  const pendPct = budget>0 ? (pd.d/budget)*100 : 0;
   let status, pillTxt;
   if(available < 0 || usedPct >= 100){ status='over'; pillTxt='Over budget'; }
   else if(usedPct > fyPct + 8){ status='hot'; pillTxt='Running hot'; }
   else if(usedPct < fyPct - 8){ status='good'; pillTxt='Room available'; }
   else { status='pace'; pillTxt='On pace'; }
-  return {...d, pend:pd, available, effAvail, usedPct, spentPct, encPct, pendPct, status, pillTxt};
+  return {...d, budget, baseBudget:d.budget, rev, pend:pd, available, effAvail, usedPct, spentPct, encPct, pendPct, status, pillTxt};
 }
 let ROWS=[];
 let AVAIL={};
 function recompute(){
   computePend();
+  computeRev();
   ROWS = DATA.map(enrich);
   AVAIL = Object.fromEntries(ROWS.map(r=>[r.code,{name:r.name, available:r.effAvail, pend:r.pend.d}]));
   const sel = wlLine.value;
@@ -633,12 +672,13 @@ function ensureSubDefaults(){
   if(!config.sub['5616'] || !config.sub['5616'].length) config.sub['5616']=DEFAULT_SUB['5616'].map(x=>({...x}));
   if(!config.closed || typeof config.closed!=='object' || Array.isArray(config.closed)) config.closed={};
   if(!Array.isArray(config.manual)) config.manual=[];
+  if(!Array.isArray(config.revenue)) config.revenue=[];
 }
 function loadConfig(){ try{ const s=localStorage.getItem(CFG_KEY); if(s) config=JSON.parse(s)||{sub:{}}; }catch(e){} ensureSubDefaults(); }
 function saveConfig(){
   try{ localStorage.setItem(CFG_KEY, JSON.stringify(config)); }catch(e){}
   if(SYNCED && db){
-    db.collection('config').doc('main').set({sub:config.sub, closed:config.closed, manual:config.manual})
+    db.collection('config').doc('main').set({sub:config.sub, closed:config.closed, manual:config.manual, revenue:config.revenue})
       .catch(e=>console.error('config sync failed:',e));
   }
 }
@@ -652,11 +692,12 @@ function watchConfig(){
     if(remote.sub) config.sub=remote.sub;
     config.closed = (remote.closed && typeof remote.closed==='object') ? remote.closed : {};
     config.manual = Array.isArray(remote.manual) ? remote.manual : [];
+    config.revenue = Array.isArray(remote.revenue) ? remote.revenue : [];
     ensureSubDefaults();
     try{ localStorage.setItem(CFG_KEY, JSON.stringify(config)); }catch(e){}
     recompute();
     const act=document.activeElement;
-    const gridEl2=document.getElementById('grid'), ledEl=document.getElementById('ledBody');
+    const gridEl2=document.getElementById('grid'), ledEl=document.getElementById('ledBody'), revEl=document.getElementById('revBody');
     renderRollup();
     if(!gridEl2.contains(act)) renderGrid();
     else for(const code in config.sub){
@@ -664,6 +705,7 @@ function watchConfig(){
       if(body && !body.contains(act)) body.innerHTML=subBodyInner(code);
     }
     if(!ledEl.contains(act)) renderLedger();
+    if(!revEl.contains(act)) renderRevenue();
     renderWishes();
   }, e=>console.error('config watch failed:',e));
 }
@@ -678,7 +720,7 @@ function renderRollup(){
     ? `after ${money(t.p)} incoming + ${money(t.w)} wish list`
     : `after ${money(t.p)} incoming invoices`;
   document.getElementById('rollup').innerHTML = `
-    <div class="stat"><div class="k">Tracked budget (14 lines)</div><div class="v">${money(t.b)}</div></div>
+    <div class="stat"><div class="k">Tracked budget (${ROWS.length} lines)</div><div class="v">${money(t.b)}</div></div>
     <div class="stat"><div class="k">Spent · ${pct(t.s/t.b*100)} of budget</div><div class="v small">${money(t.s)}</div></div>
     <div class="stat enc"><div class="k">Encumbered (committed)</div><div class="v small">${money(t.e)}</div></div>
     <div class="stat avail ${applyWL?'wl-on':''}"><div class="k">Available to spend</div><div class="v">${money(avail)}</div>
@@ -772,6 +814,10 @@ function card(r){
       + (r.pend.d>0 ? `The new portion is subtracted from what's left above.` : `Already reflected in the encumbered figure.`)
       + `</div>`;
   }
+  let revNote='';
+  if(r.rev>0){
+    revNote = `<div class="pending-note">Revenue applied: <b>+${money(r.rev)}</b> — raises this line's budget from ${money(r.baseBudget)} to ${money(r.budget)} (see Revenue panel).</div>`;
+  }
 
   return `
   <div class="card st-${r.status}">
@@ -804,6 +850,7 @@ function card(r){
       <span class="li"><span class="sw pacemark"></span>FY pace ${fyPct.toFixed(0)}%</span>
     </div>
     ${pendNote}
+    ${revNote}
     <div class="pace-note">${paceNote(r)}</div>
     <div class="discs">
     ${subBudget(r)}
@@ -897,7 +944,7 @@ function renderLedger(){
   document.getElementById('ledBody').innerHTML = `
     <p class="led-sum">Tracking <b>${open.length}</b> open invoices/POs (${all.length-open.length} closed). Of the open items,
       <b>${money2(dNew)}</b> in direct invoices reduces your tracked balances; <b>${money2(dEnc)}</b> is already inside encumbrances.
-      Lines marked <b>*</b> aren't among the 14 tracked lines.</p>
+      Lines marked <b>*</b> aren't among the tracked lines.</p>
     <p class="led-note">Add new invoices or purchase orders below — duplicates are rejected automatically by invoice #.
       <b>Close</b> an item once it's been paid (it now shows in Munis "spent") or cancelled, so it stops counting as incoming. Closing never deletes it — Reopen brings it back.</p>
     <div class="led-form">
@@ -915,8 +962,68 @@ function renderLedger(){
     <div class="led-pos"><b>Open purchase orders:</b> ${pos.length? pos.map(p=>`<span class="po">${escapeHtml(p)}</span>`).join('') : '—'}</div>`;
 }
 function refreshAfterLedgerChange(){
-  saveConfig(); recompute(); renderLedger(); renderRollup(); renderGrid(); renderWishes();
+  saveConfig(); recompute(); renderLedger(); renderRevenue(); renderRollup(); renderGrid(); renderWishes();
 }
+
+/* -------- revenue panel -------- */
+function renderRevenue(){
+  const all = revenueAll();
+  const open = all.filter(r=>!isClosed(r.doc));
+  const total = open.reduce((a,r)=>a+(TRACKED.has(r.code)?r.amt:0),0);
+  document.getElementById('revCount').textContent = open.length + ' applied';
+  const rows = all.map(r=>{
+    const tk=TRACKED.has(r.code), cl=isClosed(r.doc);
+    const btn = cl
+      ? `<button class="mini reopen" data-rev="${escapeHtml(r.doc)}" data-act="reopen">Reapply</button>`
+      : `<button class="mini close" data-rev="${escapeHtml(r.doc)}" data-act="close" title="Stop applying this revenue (e.g. once it appears in the Munis revised budget)">Remove</button>`;
+    return `<tr class="${tk?'':'untk'} ${cl?'closed':''}">
+      <td class="mono strike">${escapeHtml(r.doc)}${cl?'<span class="closedtag">removed</span>':''}${r.manual?'<span class="closedtag">added</span>':''}</td>
+      <td class="mono">${escapeHtml(r.code)}${tk?'':' *'}</td>
+      <td class="mono ra strike" style="color:#5fd6a0">+${money2(r.amt)}</td>
+      <td class="strike">${escapeHtml(r.vendor)} — ${escapeHtml(r.desc)}</td>
+      <td class="mono">${escapeHtml(r.batch)}</td>
+      <td>${btn}</td></tr>`;
+  }).join('');
+  document.getElementById('revBody').innerHTML = `
+    <p class="led-sum">Applying <b>${money2(total)}</b> in revenue across ${open.length} item${open.length===1?'':'s'} —
+      reimbursements, offsets, and other positive money that raises a line's spendable budget.</p>
+    <p class="led-note">Add state reimbursements, insurance recoveries, or budget offsets here — they immediately raise the target line's budget and available balance for everyone.
+      <b>Remove</b> one when it gets baked into the official Munis revised budget (so it isn't counted twice); Reapply undoes that. Duplicates are rejected by reference #.</p>
+    <div class="led-form" style="grid-template-columns:150px 90px 130px 1fr 1fr 86px">
+      <div class="field"><label for="rvDoc">Reference #</label><input id="rvDoc" type="text" placeholder="REV-2026-01"/></div>
+      <div class="field"><label for="rvCode">Line</label><input id="rvCode" type="text" placeholder="5204"/></div>
+      <div class="field"><label for="rvAmt">Amount $</label><input id="rvAmt" type="number" min="0" step="0.01"/></div>
+      <div class="field"><label for="rvVendor">Source</label><input id="rvVendor" type="text" placeholder="State of Texas"/></div>
+      <div class="field"><label for="rvDesc">Description</label><input id="rvDesc" type="text" placeholder="What it's for"/></div>
+      <button class="addbtn" id="rvAdd">Add</button>
+    </div>
+    <div class="led-scroll"><table class="led-tbl">
+      <thead><tr><th>Reference</th><th>Line</th><th>Amount</th><th>Source — Description</th><th>When</th><th></th></tr></thead>
+      <tbody>${rows}</tbody></table></div>`;
+}
+function addRevenueEntry(){
+  const docId=document.getElementById('rvDoc').value.trim() || ('REV-'+Date.now());
+  const code=document.getElementById('rvCode').value.trim();
+  const amt=parseFloat(document.getElementById('rvAmt').value);
+  const vendor=document.getElementById('rvVendor').value.trim()||'—';
+  const desc=document.getElementById('rvDesc').value.trim()||'—';
+  if(!/^\d{4}$/.test(code)){ alert('Line must be a 4-digit account code, e.g. 5204.'); return; }
+  if(isNaN(amt) || amt<=0){ alert('Enter a valid positive amount.'); return; }
+  if(revenueAll().some(r=>String(r.doc).toLowerCase()===docId.toLowerCase())){
+    alert('Reference #'+docId+' is already in the revenue list — not added (double-count guard).'); return;
+  }
+  const d=new Date();
+  config.revenue.push({doc:docId, code, amt, batch:(d.getMonth()+1)+'/'+d.getFullYear(), vendor, desc});
+  refreshAfterLedgerChange();
+}
+document.getElementById('revBody').addEventListener('click',e=>{
+  const b=e.target.closest('button'); if(!b) return;
+  if(b.id==='rvAdd'){ addRevenueEntry(); return; }
+  const id=b.dataset.rev;
+  if(!id) return;
+  if(b.dataset.act==='close'){ config.closed[id]=true; refreshAfterLedgerChange(); }
+  if(b.dataset.act==='reopen'){ delete config.closed[id]; refreshAfterLedgerChange(); }
+});
 function addLedgerEntry(){
   const doc=document.getElementById('lgDoc').value.trim();
   const po=document.getElementById('lgPo').value.trim();
@@ -1072,6 +1179,7 @@ loadConfig();
 recompute();
 watchConfig();
 renderLedger();
+renderRevenue();
 renderRollup();
 renderGrid();
 setSyncBadge();
