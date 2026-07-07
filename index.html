@@ -188,6 +188,19 @@
   .led-pos{margin-top:12px;font-size:12px;color:var(--muted)}
   .led-pos .po{display:inline-block;font-family:'JetBrains Mono';background:#111a27;border:1px solid var(--line-soft);
     border-radius:6px;padding:2px 7px;margin:2px 3px}
+  .led-form{display:grid;grid-template-columns:110px 110px 90px 110px 1fr 1fr 86px;gap:8px;align-items:end;margin:14px 0 4px}
+  .led-form .field label{font-size:9.5px}
+  .led-form input{padding:8px 9px;font-size:12.5px}
+  .mini{padding:4px 10px;font-size:11px;border-radius:7px;border:1px solid var(--line);background:none;
+    color:var(--muted);cursor:pointer;white-space:nowrap}
+  .mini:hover{color:#fff;border-color:#3f5877}
+  .mini.close:hover{color:#5fd6a0;border-color:#1c5540}
+  .mini.reopen:hover{color:var(--enc);border-color:var(--enc)}
+  .led-tbl tr.closed td{opacity:.4}
+  .led-tbl tr.closed td.strike{text-decoration:line-through}
+  .closedtag{font-size:9.5px;font-family:'Oswald';letter-spacing:.07em;text-transform:uppercase;color:#7f8ca0;
+    border:1px solid var(--line);border-radius:10px;padding:2px 7px;margin-left:6px}
+  @media (max-width:880px){ .led-form{grid-template-columns:1fr 1fr 1fr} }
 
   .wl{margin-top:40px;background:linear-gradient(180deg,var(--panel-2),var(--panel));
     border:1px solid var(--line);border-radius:16px;padding:22px;box-shadow:var(--shadow)}
@@ -374,10 +387,10 @@
    Firebase console ▸ Project settings ▸ General ▸ Your apps ▸ SDK config.
    ===================================================================== */
 const FIREBASE_CONFIG = {
-  apiKey:     "AIzaSyAPM3Jm3g-pCSlfdsuI4tBRL3HZ62TFe8s",
-  authDomain: "budget-telemetry.firebaseapp.com",
-  projectId:  "budget-telemetry",
-  appId:      "1:423779943480:web:aa156eaacfbb23079892cd"
+  apiKey:     "PASTE_API_KEY_HERE",
+  authDomain: "PASTE_PROJECT.firebaseapp.com",
+  projectId:  "PASTE_PROJECT_ID",
+  appId:      "PASTE_APP_ID"
 };
 
 /* ---------------- BUDGET DATA (Munis YTD, period 2026·10) ---------------- */
@@ -526,13 +539,24 @@ const LEDGER = [
 ].map(a=>({doc:a[0], po:a[1], code:a[2], amt:a[3], batch:a[4], vendor:a[5], desc:a[6]}));
 
 const TRACKED = new Set(DATA.map(d=>d.code));
-/* derive incoming per tracked line from the ledger (PO invoices = already encumbered; direct = new) */
-const PEND_BY_CODE = {};
-LEDGER.forEach(r=>{
-  if(!TRACKED.has(r.code)) return;
-  const b = PEND_BY_CODE[r.code] || (PEND_BY_CODE[r.code]={d:0,p:0});
-  if(r.po) b.p += r.amt; else b.d += r.amt;
-});
+/* Effective ledger = baseline entries above + entries added on the page (config.manual),
+   minus anything marked closed (config.closed). Closing an invoice removes it from
+   "incoming" — do that when it's been paid (now in Munis spent) or cancelled. */
+let PEND_BY_CODE = {};
+function ledgerAll(){
+  const manual=(config.manual||[]).map(m=>({...m, manual:true}));
+  return LEDGER.map(r=>({...r})).concat(manual);
+}
+function isClosed(id){ return !!((config.closed||{})[id]); }
+function computePend(){
+  PEND_BY_CODE={};
+  ledgerAll().forEach(r=>{
+    if(isClosed(r.doc)) return;
+    if(!TRACKED.has(r.code)) return;
+    const b = PEND_BY_CODE[r.code] || (PEND_BY_CODE[r.code]={d:0,p:0});
+    if(r.po) b.p += r.amt; else b.d += r.amt;
+  });
+}
 
 /* -------- Fiscal-year clock (anchored to the 7/6/2026 data date) -------- */
 const fyStart = new Date(2025,9,1), fyEnd = new Date(2026,9,1), asOf = new Date(2026,6,6);
@@ -576,7 +600,16 @@ function enrich(d){
   else { status='pace'; pillTxt='On pace'; }
   return {...d, pend:pd, available, effAvail, usedPct, spentPct, encPct, pendPct, status, pillTxt};
 }
-const ROWS = DATA.map(enrich);
+let ROWS=[];
+let AVAIL={};
+function recompute(){
+  computePend();
+  ROWS = DATA.map(enrich);
+  AVAIL = Object.fromEntries(ROWS.map(r=>[r.code,{name:r.name, available:r.effAvail, pend:r.pend.d}]));
+  const sel = wlLine.value;
+  wlLine.innerHTML = ROWS.map(r=>`<option value="${r.code}">${r.code} · ${r.name} — ${money(r.effAvail)} left</option>`).join('');
+  if(sel) wlLine.value = sel;
+}
 
 /* -------- shared state -------- */
 let applyWL=false;          // "apply wish list to balances" toggle
@@ -598,27 +631,40 @@ function ensureSubDefaults(){
     });
   }
   if(!config.sub['5616'] || !config.sub['5616'].length) config.sub['5616']=DEFAULT_SUB['5616'].map(x=>({...x}));
+  if(!config.closed || typeof config.closed!=='object' || Array.isArray(config.closed)) config.closed={};
+  if(!Array.isArray(config.manual)) config.manual=[];
 }
 function loadConfig(){ try{ const s=localStorage.getItem(CFG_KEY); if(s) config=JSON.parse(s)||{sub:{}}; }catch(e){} ensureSubDefaults(); }
 function saveConfig(){
   try{ localStorage.setItem(CFG_KEY, JSON.stringify(config)); }catch(e){}
   if(SYNCED && db){
-    db.collection('config').doc('main').set({sub:config.sub}).catch(e=>console.error('config sync failed:',e));
+    db.collection('config').doc('main').set({sub:config.sub, closed:config.closed, manual:config.manual})
+      .catch(e=>console.error('config sync failed:',e));
   }
 }
-/* live-sync sub-budgets when connected: last write wins; don't clobber a panel mid-edit */
+/* live-sync config when connected: last write wins; don't clobber a section mid-edit */
 function watchConfig(){
   if(!SYNCED || !db) return;
   db.collection('config').doc('main').onSnapshot(doc=>{
     if(!doc.exists) return;
     const remote=doc.data();
-    if(!remote || !remote.sub) return;
-    config.sub=remote.sub; ensureSubDefaults();
+    if(!remote) return;
+    if(remote.sub) config.sub=remote.sub;
+    config.closed = (remote.closed && typeof remote.closed==='object') ? remote.closed : {};
+    config.manual = Array.isArray(remote.manual) ? remote.manual : [];
+    ensureSubDefaults();
     try{ localStorage.setItem(CFG_KEY, JSON.stringify(config)); }catch(e){}
-    for(const code in config.sub){
+    recompute();
+    const act=document.activeElement;
+    const gridEl2=document.getElementById('grid'), ledEl=document.getElementById('ledBody');
+    renderRollup();
+    if(!gridEl2.contains(act)) renderGrid();
+    else for(const code in config.sub){
       const body=document.getElementById('sb-body-'+code);
-      if(body && !body.contains(document.activeElement)) body.innerHTML=subBodyInner(code);
+      if(body && !body.contains(act)) body.innerHTML=subBodyInner(code);
     }
+    if(!ledEl.contains(act)) renderLedger();
+    renderWishes();
   }, e=>console.error('config watch failed:',e));
 }
 
@@ -830,33 +876,74 @@ document.getElementById('applyWlChip').addEventListener('click',e=>{
 
 /* -------- ledger panel -------- */
 function renderLedger(){
-  const total = LEDGER.reduce((a,r)=>a+r.amt,0);
-  const pos = [...new Set(LEDGER.filter(r=>r.po).map(r=>r.po))].sort();
+  const all = ledgerAll();
+  const open = all.filter(r=>!isClosed(r.doc));
+  const pos = [...new Set(open.filter(r=>r.po).map(r=>r.po))].sort();
   let dNew=0,dEnc=0;
-  LEDGER.forEach(r=>{ if(TRACKED.has(r.code)){ if(r.po) dEnc+=r.amt; else dNew+=r.amt; } });
-  document.getElementById('ledCount').textContent = LEDGER.length;
-  const rows = LEDGER.map(r=>{
-    const tk=TRACKED.has(r.code);
-    return `<tr class="${tk?'':'untk'}">
-      <td class="mono">${r.doc}</td><td class="mono">${r.po||'—'}</td>
-      <td class="mono">${r.code}${tk?'':' *'}</td><td class="mono ra">${money2(r.amt)}</td>
-      <td>${escapeHtml(r.vendor)} — ${escapeHtml(r.desc)}</td><td class="mono">${r.batch}</td></tr>`;
+  open.forEach(r=>{ if(TRACKED.has(r.code)){ if(r.po) dEnc+=r.amt; else dNew+=r.amt; } });
+  document.getElementById('ledCount').textContent = open.length + ' open';
+  const rows = all.map(r=>{
+    const tk=TRACKED.has(r.code), cl=isClosed(r.doc);
+    const btn = cl
+      ? `<button class="mini reopen" data-led="${escapeHtml(r.doc)}" data-act="reopen">Reopen</button>`
+      : `<button class="mini close" data-led="${escapeHtml(r.doc)}" data-act="close" title="Mark paid or cancelled — removes it from incoming">Close</button>`;
+    return `<tr class="${tk?'':'untk'} ${cl?'closed':''}">
+      <td class="mono strike">${escapeHtml(r.doc)}${cl?'<span class="closedtag">closed</span>':''}${r.manual?'<span class="closedtag">added</span>':''}</td>
+      <td class="mono">${r.po?escapeHtml(r.po):'—'}</td>
+      <td class="mono">${escapeHtml(r.code)}${tk?'':' *'}</td><td class="mono ra strike">${money2(r.amt)}</td>
+      <td class="strike">${escapeHtml(r.vendor)} — ${escapeHtml(r.desc)}</td><td class="mono">${escapeHtml(r.batch)}</td>
+      <td>${btn}</td></tr>`;
   }).join('');
   document.getElementById('ledBody').innerHTML = `
-    <p class="led-sum">Tracking <b>${LEDGER.length}</b> invoices (total <b>${money2(total)}</b>) and <b>${pos.length}</b> purchase orders from batches 3837 &amp; 3849.
-      Of these, <b>${money2(dNew)}</b> in direct invoices reduces your tracked balances; <b>${money2(dEnc)}</b> is already inside encumbrances.
+    <p class="led-sum">Tracking <b>${open.length}</b> open invoices/POs (${all.length-open.length} closed). Of the open items,
+      <b>${money2(dNew)}</b> in direct invoices reduces your tracked balances; <b>${money2(dEnc)}</b> is already inside encumbrances.
       Lines marked <b>*</b> aren't among the 14 tracked lines.</p>
-    <p class="led-note">Double-count guard: when you send future reports, only invoice numbers and PO numbers <b>not already listed here</b> get added — the same PO or invoice is never counted twice.</p>
+    <p class="led-note">Add new invoices or purchase orders below — duplicates are rejected automatically by invoice #.
+      <b>Close</b> an item once it's been paid (it now shows in Munis "spent") or cancelled, so it stops counting as incoming. Closing never deletes it — Reopen brings it back.</p>
+    <div class="led-form">
+      <div class="field"><label for="lgDoc">Invoice #</label><input id="lgDoc" type="text" placeholder="14501"/></div>
+      <div class="field"><label for="lgPo">PO # (opt.)</label><input id="lgPo" type="text" placeholder="2620xxx"/></div>
+      <div class="field"><label for="lgCode">Line</label><input id="lgCode" type="text" placeholder="5113"/></div>
+      <div class="field"><label for="lgAmt">Amount $</label><input id="lgAmt" type="number" min="0" step="0.01"/></div>
+      <div class="field"><label for="lgVendor">Vendor</label><input id="lgVendor" type="text" placeholder="Vendor"/></div>
+      <div class="field"><label for="lgDesc">Description</label><input id="lgDesc" type="text" placeholder="What it's for"/></div>
+      <button class="addbtn" id="lgAdd">Add</button>
+    </div>
     <div class="led-scroll"><table class="led-tbl">
-      <thead><tr><th>Invoice</th><th>PO</th><th>Line</th><th>Amount</th><th>Vendor — Description</th><th>Batch</th></tr></thead>
+      <thead><tr><th>Invoice</th><th>PO</th><th>Line</th><th>Amount</th><th>Vendor — Description</th><th>Batch</th><th></th></tr></thead>
       <tbody>${rows}</tbody></table></div>
-    <div class="led-pos"><b>Purchase orders tracked:</b> ${pos.map(p=>`<span class="po">${p}</span>`).join('')}</div>`;
+    <div class="led-pos"><b>Open purchase orders:</b> ${pos.length? pos.map(p=>`<span class="po">${escapeHtml(p)}</span>`).join('') : '—'}</div>`;
 }
+function refreshAfterLedgerChange(){
+  saveConfig(); recompute(); renderLedger(); renderRollup(); renderGrid(); renderWishes();
+}
+function addLedgerEntry(){
+  const doc=document.getElementById('lgDoc').value.trim();
+  const po=document.getElementById('lgPo').value.trim();
+  const code=document.getElementById('lgCode').value.trim();
+  const amt=parseFloat(document.getElementById('lgAmt').value);
+  const vendor=document.getElementById('lgVendor').value.trim()||'—';
+  const desc=document.getElementById('lgDesc').value.trim()||'—';
+  if(!doc){ alert('Enter the invoice number — it\'s what prevents double-counting.'); return; }
+  if(!/^\d{4}$/.test(code)){ alert('Line must be a 4-digit account code, e.g. 5113.'); return; }
+  if(isNaN(amt) || amt<0){ alert('Enter a valid amount.'); return; }
+  if(ledgerAll().some(r=>String(r.doc).toLowerCase()===doc.toLowerCase())){
+    alert('Invoice #'+doc+' is already in the ledger — not added (double-count guard).'); return;
+  }
+  config.manual.push({doc, po:po||null, code, amt, batch:'manual', vendor, desc});
+  refreshAfterLedgerChange();
+}
+document.getElementById('ledBody').addEventListener('click',e=>{
+  const b=e.target.closest('button'); if(!b) return;
+  if(b.id==='lgAdd'){ addLedgerEntry(); return; }
+  const id=b.dataset.led;
+  if(!id) return;
+  if(b.dataset.act==='close'){ config.closed[id]=true; refreshAfterLedgerChange(); }
+  if(b.dataset.act==='reopen'){ delete config.closed[id]; refreshAfterLedgerChange(); }
+});
 
 /* ===================== WISH LIST ===================== */
-const AVAIL = Object.fromEntries(ROWS.map(r=>[r.code,{name:r.name, available:r.effAvail, pend:r.pend.d}]));
 const wlLine=document.getElementById('wlLine');
-wlLine.innerHTML = ROWS.map(r=>`<option value="${r.code}">${r.code} · ${r.name} — ${money(r.effAvail)} left</option>`).join('');
 
 const LS_KEY='chfd_fy26_wishlist_v1';
 function looksConfigured(c){ return c && c.apiKey && c.projectId && !/PASTE/i.test(c.apiKey) && !/PASTE/i.test(c.projectId); }
@@ -982,6 +1069,7 @@ function renderWishes(){
 
 /* -------- init -------- */
 loadConfig();
+recompute();
 watchConfig();
 renderLedger();
 renderRollup();
