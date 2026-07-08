@@ -67,6 +67,11 @@
   .chip:hover{border-color:#3a4a63;color:var(--text)}
   .chip.on{background:#22314a;border-color:#3f5877;color:#fff}
   #applyWlChip.on{background:#2c2145;border-color:#5a4088;color:#d9c2f5}
+  #applyRevChip.on{background:#153726;border-color:#2c6b4a;color:#8fe3b8}
+  .led-tbl tr.editing td{background:#101b2b}
+  .led-tbl tr.editing input{background:#0f1723;border:1px solid #4a6da0;color:var(--text);border-radius:7px;
+    padding:5px 7px;font-size:12px;font-family:'JetBrains Mono'}
+  .led-tbl tr.editing input.wide{font-family:'Inter',sans-serif;width:47%}
   .jumpbtn{margin-left:auto}
   .jumpbtn a{color:var(--muted);text-decoration:none;font-size:12.5px;border:1px solid var(--line);
     padding:6px 13px;border-radius:20px}
@@ -318,6 +323,7 @@
     </div>
     <span class="lbl" style="margin-left:14px">What-if</span>
     <span class="chip" id="applyWlChip">Apply wish list to balances</span>
+    <span class="chip" id="applyRevChip">Apply revenues to balances</span>
     <span class="jumpbtn"><a href="#wishlist">↓ Wish list</a></span>
   </div>
 
@@ -623,8 +629,9 @@ function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':
 /* -------- enrich rows (incoming from ledger) -------- */
 function enrich(d){
   const pd = PEND_BY_CODE[d.code] || {d:0,p:0};
-  const rev = REV_BY_CODE[d.code] || 0;
-  const budget = d.budget + rev;                 // effective budget incl. applied revenue
+  const revAvail = REV_BY_CODE[d.code] || 0;
+  const rev = applyRev ? revAvail : 0;
+  const budget = d.budget + rev;                 // effective budget incl. applied revenue (when toggled on)
   const available = budget - d.spent - d.enc;
   const effAvail = available - pd.d;
   const usedPct = budget>0 ? ((d.spent+d.enc)/budget)*100 : 0;
@@ -636,7 +643,7 @@ function enrich(d){
   else if(usedPct > fyPct + 8){ status='hot'; pillTxt='Running hot'; }
   else if(usedPct < fyPct - 8){ status='good'; pillTxt='Room available'; }
   else { status='pace'; pillTxt='On pace'; }
-  return {...d, budget, baseBudget:d.budget, rev, pend:pd, available, effAvail, usedPct, spentPct, encPct, pendPct, status, pillTxt};
+  return {...d, budget, baseBudget:d.budget, rev, revAvail, pend:pd, available, effAvail, usedPct, spentPct, encPct, pendPct, status, pillTxt};
 }
 let ROWS=[];
 let AVAIL={};
@@ -652,6 +659,8 @@ function recompute(){
 
 /* -------- shared state -------- */
 let applyWL=false;          // "apply wish list to balances" toggle
+let applyRev=false;         // "apply revenues to balances" toggle
+let editingRev=null, editingLed=null;   // reference # of the row being edited (added entries only)
 let WLC={};                 // wishlist $ per code (only populated when applyWL)
 let wishes=[], SYNCED=false, db=null;
 function wlByCode(){ const m={}; wishes.forEach(w=>{ m[w.code]=(m[w.code]||0)+(Number(w.cost)||0); }); return m; }
@@ -713,12 +722,13 @@ function watchConfig(){
 /* -------- rollup -------- */
 function renderRollup(){
   const wlc = applyWL ? wlByCode() : {};
-  const t = ROWS.reduce((a,r)=>({b:a.b+r.budget,s:a.s+r.spent,e:a.e+r.enc,p:a.p+r.pend.d,w:a.w+(wlc[r.code]||0)}),
-                        {b:0,s:0,e:0,p:0,w:0});
+  const t = ROWS.reduce((a,r)=>({b:a.b+r.budget,s:a.s+r.spent,e:a.e+r.enc,p:a.p+r.pend.d,w:a.w+(wlc[r.code]||0),rv:a.rv+r.rev}),
+                        {b:0,s:0,e:0,p:0,w:0,rv:0});
   const avail = t.b - t.s - t.e - t.p - (applyWL? t.w : 0);
-  const sub = applyWL
-    ? `after ${money(t.p)} incoming + ${money(t.w)} wish list`
-    : `after ${money(t.p)} incoming invoices`;
+  const parts=[`after ${money(t.p)} incoming`];
+  if(applyRev) parts.push(`+${money(t.rv)} revenue applied`);
+  if(applyWL) parts.push(`+${money(t.w)} wish list`);
+  const sub = parts.join(' · ');
   document.getElementById('rollup').innerHTML = `
     <div class="stat"><div class="k">Tracked budget (${ROWS.length} lines)</div><div class="v">${money(t.b)}</div></div>
     <div class="stat"><div class="k">Spent · ${pct(t.s/t.b*100)} of budget</div><div class="v small">${money(t.s)}</div></div>
@@ -817,6 +827,8 @@ function card(r){
   let revNote='';
   if(r.rev>0){
     revNote = `<div class="pending-note">Revenue applied: <b>+${money(r.rev)}</b> — raises this line's budget from ${money(r.baseBudget)} to ${money(r.budget)} (see Revenue panel).</div>`;
+  } else if(r.revAvail>0){
+    revNote = `<div class="pending-note">+<b>${money(r.revAvail)}</b> revenue is available for this line — turn on "Apply revenues to balances" to include it.</div>`;
   }
 
   return `
@@ -920,6 +932,10 @@ document.getElementById('applyWlChip').addEventListener('click',e=>{
   applyWL=!applyWL; e.currentTarget.classList.toggle('on',applyWL);
   renderRollup(); renderGrid();
 });
+document.getElementById('applyRevChip').addEventListener('click',e=>{
+  applyRev=!applyRev; e.currentTarget.classList.toggle('on',applyRev);
+  recompute(); renderRollup(); renderGrid(); renderWishes();
+});
 
 /* -------- ledger panel -------- */
 function renderLedger(){
@@ -931,15 +947,28 @@ function renderLedger(){
   document.getElementById('ledCount').textContent = open.length + ' open';
   const rows = all.map(r=>{
     const tk=TRACKED.has(r.code), cl=isClosed(r.doc);
+    if(r.manual && editingLed===r.doc){
+      return `<tr class="editing">
+        <td class="mono">${escapeHtml(r.doc)}</td>
+        <td><input id="lgEpo" value="${r.po?escapeHtml(r.po):''}" placeholder="—" style="width:80px"/></td>
+        <td><input id="lgEcode" value="${escapeHtml(r.code)}" style="width:64px"/></td>
+        <td><input id="lgEamt" type="number" min="0" step="0.01" value="${r.amt}" style="width:100px"/></td>
+        <td><input id="lgEvendor" class="wide" value="${escapeHtml(r.vendor)}" placeholder="Vendor"/>
+            <input id="lgEdesc" class="wide" value="${escapeHtml(r.desc)}" placeholder="Description"/></td>
+        <td class="mono">${escapeHtml(r.batch)}</td>
+        <td><button class="mini close" data-led="${escapeHtml(r.doc)}" data-act="save">Save</button>
+            <button class="mini" data-led="${escapeHtml(r.doc)}" data-act="cancel">Cancel</button></td></tr>`;
+    }
     const btn = cl
       ? `<button class="mini reopen" data-led="${escapeHtml(r.doc)}" data-act="reopen">Reopen</button>`
       : `<button class="mini close" data-led="${escapeHtml(r.doc)}" data-act="close" title="Mark paid or cancelled — removes it from incoming">Close</button>`;
+    const editBtn = (r.manual && !cl) ? `<button class="mini" data-led="${escapeHtml(r.doc)}" data-act="edit">Edit</button> ` : '';
     return `<tr class="${tk?'':'untk'} ${cl?'closed':''}">
       <td class="mono strike">${escapeHtml(r.doc)}${cl?'<span class="closedtag">closed</span>':''}${r.manual?'<span class="closedtag">added</span>':''}</td>
       <td class="mono">${r.po?escapeHtml(r.po):'—'}</td>
       <td class="mono">${escapeHtml(r.code)}${tk?'':' *'}</td><td class="mono ra strike">${money2(r.amt)}</td>
       <td class="strike">${escapeHtml(r.vendor)} — ${escapeHtml(r.desc)}</td><td class="mono">${escapeHtml(r.batch)}</td>
-      <td>${btn}</td></tr>`;
+      <td>${editBtn}${btn}</td></tr>`;
   }).join('');
   document.getElementById('ledBody').innerHTML = `
     <p class="led-sum">Tracking <b>${open.length}</b> open invoices/POs (${all.length-open.length} closed). Of the open items,
@@ -973,22 +1002,34 @@ function renderRevenue(){
   document.getElementById('revCount').textContent = open.length + ' applied';
   const rows = all.map(r=>{
     const tk=TRACKED.has(r.code), cl=isClosed(r.doc);
+    if(r.manual && editingRev===r.doc){
+      return `<tr class="editing">
+        <td class="mono">${escapeHtml(r.doc)}</td>
+        <td><input id="rvEcode" value="${escapeHtml(r.code)}" style="width:64px"/></td>
+        <td><input id="rvEamt" type="number" min="0" step="0.01" value="${r.amt}" style="width:110px"/></td>
+        <td><input id="rvEvendor" class="wide" value="${escapeHtml(r.vendor)}" placeholder="Source"/>
+            <input id="rvEdesc" class="wide" value="${escapeHtml(r.desc)}" placeholder="Description"/></td>
+        <td class="mono">${escapeHtml(r.batch)}</td>
+        <td><button class="mini close" data-rev="${escapeHtml(r.doc)}" data-act="save">Save</button>
+            <button class="mini" data-rev="${escapeHtml(r.doc)}" data-act="cancel">Cancel</button></td></tr>`;
+    }
     const btn = cl
       ? `<button class="mini reopen" data-rev="${escapeHtml(r.doc)}" data-act="reopen">Reapply</button>`
       : `<button class="mini close" data-rev="${escapeHtml(r.doc)}" data-act="close" title="Stop applying this revenue (e.g. once it appears in the Munis revised budget)">Remove</button>`;
+    const editBtn = (r.manual && !cl) ? `<button class="mini" data-rev="${escapeHtml(r.doc)}" data-act="edit">Edit</button> ` : '';
     return `<tr class="${tk?'':'untk'} ${cl?'closed':''}">
       <td class="mono strike">${escapeHtml(r.doc)}${cl?'<span class="closedtag">removed</span>':''}${r.manual?'<span class="closedtag">added</span>':''}</td>
       <td class="mono">${escapeHtml(r.code)}${tk?'':' *'}</td>
       <td class="mono ra strike" style="color:#5fd6a0">+${money2(r.amt)}</td>
       <td class="strike">${escapeHtml(r.vendor)} — ${escapeHtml(r.desc)}</td>
       <td class="mono">${escapeHtml(r.batch)}</td>
-      <td>${btn}</td></tr>`;
+      <td>${editBtn}${btn}</td></tr>`;
   }).join('');
   document.getElementById('revBody').innerHTML = `
     <p class="led-sum">Applying <b>${money2(total)}</b> in revenue across ${open.length} item${open.length===1?'':'s'} —
       reimbursements, offsets, and other positive money that raises a line's spendable budget.</p>
-    <p class="led-note">Add state reimbursements, insurance recoveries, or budget offsets here — they immediately raise the target line's budget and available balance for everyone.
-      <b>Remove</b> one when it gets baked into the official Munis revised budget (so it isn't counted twice); Reapply undoes that. Duplicates are rejected by reference #.</p>
+    <p class="led-note">Add state reimbursements, insurance recoveries, or budget offsets here. They raise the target line's budget when <b>"Apply revenues to balances"</b> (above the cards) is turned on — leave the toggle off to see balances without them.
+      <b>Edit</b> fixes an entry you added; <b>Remove</b> one when it gets baked into the official Munis revised budget (so it isn't counted twice); Reapply undoes that. Duplicates are rejected by reference #.</p>
     <div class="led-form" style="grid-template-columns:150px 90px 130px 1fr 1fr 86px">
       <div class="field"><label for="rvDoc">Reference #</label><input id="rvDoc" type="text" placeholder="REV-2026-01"/></div>
       <div class="field"><label for="rvCode">Line</label><input id="rvCode" type="text" placeholder="5204"/></div>
@@ -1023,6 +1064,20 @@ document.getElementById('revBody').addEventListener('click',e=>{
   if(!id) return;
   if(b.dataset.act==='close'){ config.closed[id]=true; refreshAfterLedgerChange(); }
   if(b.dataset.act==='reopen'){ delete config.closed[id]; refreshAfterLedgerChange(); }
+  if(b.dataset.act==='edit'){ editingRev=id; renderRevenue(); }
+  if(b.dataset.act==='cancel'){ editingRev=null; renderRevenue(); }
+  if(b.dataset.act==='save'){
+    const code=document.getElementById('rvEcode').value.trim();
+    const amt=parseFloat(document.getElementById('rvEamt').value);
+    const vendor=document.getElementById('rvEvendor').value.trim()||'—';
+    const desc=document.getElementById('rvEdesc').value.trim()||'—';
+    if(!/^\d{4}$/.test(code)){ alert('Line must be a 4-digit account code, e.g. 5204.'); return; }
+    if(isNaN(amt) || amt<=0){ alert('Enter a valid positive amount.'); return; }
+    const entry=config.revenue.find(r=>String(r.doc)===String(id));
+    if(entry){ entry.code=code; entry.amt=amt; entry.vendor=vendor; entry.desc=desc; }
+    editingRev=null;
+    refreshAfterLedgerChange();
+  }
 });
 function addLedgerEntry(){
   const doc=document.getElementById('lgDoc').value.trim();
@@ -1047,6 +1102,21 @@ document.getElementById('ledBody').addEventListener('click',e=>{
   if(!id) return;
   if(b.dataset.act==='close'){ config.closed[id]=true; refreshAfterLedgerChange(); }
   if(b.dataset.act==='reopen'){ delete config.closed[id]; refreshAfterLedgerChange(); }
+  if(b.dataset.act==='edit'){ editingLed=id; renderLedger(); }
+  if(b.dataset.act==='cancel'){ editingLed=null; renderLedger(); }
+  if(b.dataset.act==='save'){
+    const po=document.getElementById('lgEpo').value.trim();
+    const code=document.getElementById('lgEcode').value.trim();
+    const amt=parseFloat(document.getElementById('lgEamt').value);
+    const vendor=document.getElementById('lgEvendor').value.trim()||'—';
+    const desc=document.getElementById('lgEdesc').value.trim()||'—';
+    if(!/^\d{4}$/.test(code)){ alert('Line must be a 4-digit account code, e.g. 5113.'); return; }
+    if(isNaN(amt) || amt<0){ alert('Enter a valid amount.'); return; }
+    const entry=config.manual.find(r=>String(r.doc)===String(id));
+    if(entry){ entry.po=po||null; entry.code=code; entry.amt=amt; entry.vendor=vendor; entry.desc=desc; }
+    editingLed=null;
+    refreshAfterLedgerChange();
+  }
 });
 
 /* ===================== WISH LIST ===================== */
