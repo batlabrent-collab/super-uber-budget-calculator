@@ -382,6 +382,18 @@
   table.ptbl tr.stn-row td{background:#0f1723;color:var(--text);font-family:'Oswald';
     text-transform:uppercase;letter-spacing:.04em;font-size:11px}
 
+  /* ===================== FRESHNESS STAMP ===================== */
+  .freshbar{background:#0d1420;border-bottom:1px solid var(--line-soft)}
+  .freshbar-inner{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;justify-content:space-between;
+    padding:7px 0;font-size:11.5px;color:var(--faint)}
+  .fresh-ver{font-family:'Oswald';letter-spacing:.06em;text-transform:uppercase;font-size:11px;color:var(--muted)}
+  .fresh-ver b{color:#fff;font-weight:600}
+  .fresh-build{color:var(--faint);font-weight:400;letter-spacing:0;text-transform:none;font-family:'Inter',sans-serif}
+  .fresh-feeds{display:flex;flex-wrap:wrap;gap:4px 10px;align-items:center}
+  .fresh-item b{color:var(--muted);font-family:'JetBrains Mono';font-weight:600;font-size:11px}
+  .fresh-dot{color:var(--line);font-size:9px}
+  .fresh-view b{color:var(--faint)}
+
 </style>
 </head>
 <body>
@@ -415,6 +427,18 @@
   <button class="tab on" data-tab="budget"><span class="tdot"></span>Budget Status</button>
   <button class="tab" data-tab="perf"><span class="tdot"></span>Performance Metrics</button>
 </div></nav>
+
+<!-- ===================== FRESHNESS STAMP ===================== -->
+<div class="freshbar"><div class="wrap freshbar-inner">
+  <span class="fresh-ver">CHFD Dashboard <b>v1.2</b><span class="fresh-build"> · updated Jul 16 2026</span></span>
+  <span class="fresh-feeds">
+    <span class="fresh-item">Budget data <b id="freshBudget">—</b></span>
+    <span class="fresh-dot">•</span>
+    <span class="fresh-item">Turnout data <b id="freshTurnout">—</b></span>
+    <span class="fresh-dot">•</span>
+    <span class="fresh-item fresh-view">viewed <b id="freshViewed">—</b></span>
+  </span>
+</div></div>
 
 <div class="wrap tabpanel" id="tab-budget">
 
@@ -807,6 +831,8 @@ function renderFyClocks(){
   const sn=document.getElementById('spentNote');
   if(sn) sn.innerHTML='$'+(FUND.spent/1e6).toFixed(2)+'M · '+usedPctVal.toFixed(1)+'% w/ enc · '+pace
     +' · <span style="color:var(--faint)">figures as of '+clkDate(asOf)+'</span>';
+  const fb=document.getElementById('freshBudget'); if(fb) fb.textContent='as of '+clkDate(asOf);
+  const fv=document.getElementById('freshViewed'); if(fv) fv.textContent=clkDate(today);
 }
 renderFyClocks();
 
@@ -1523,6 +1549,7 @@ renderWishes();
 
   function render(){
     const wrap=document.getElementById('chartWrap');
+    updateFreshTurnout();
     const res=getAgg(period);
     const subEl=document.getElementById('chartSubtitle');
     const statEl=document.getElementById('dataStatus');
@@ -1723,7 +1750,11 @@ renderWishes();
     document.body.dataset.view="budget";
   }
 
-  function init(){ wireTabs(); wire(); bindTooltip(); render(); tryFetchData(); }
+  function updateFreshTurnout(){
+    const a=getAgg('d7'); const el=document.getElementById('freshTurnout'); if(!el) return;
+    el.textContent = (a && a.minD) ? (niceDate(a.minD)+'–'+niceDate(a.maxD)) : '—';
+  }
+  function init(){ wireTabs(); wire(); bindTooltip(); render(); updateFreshTurnout(); tryFetchData(); }
   if(document.readyState==="loading") document.addEventListener('DOMContentLoaded',init); else init();
 })();
 
