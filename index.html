@@ -282,7 +282,7 @@
   /* ===================== TAB NAV + PERFORMANCE METRICS ===================== */
   .tabbar{position:sticky;top:0;z-index:40;background:linear-gradient(180deg,#121926,#0f1622);
     border-bottom:1px solid var(--line);box-shadow:0 6px 18px rgba(0,0,0,.25)}
-  .tabbar-inner{display:flex;gap:6px;padding:0}
+  .tabbar-inner{display:flex;gap:6px;padding:0;flex-wrap:wrap}
   .tab{appearance:none;background:none;border:none;cursor:pointer;font-family:'Oswald';
     text-transform:uppercase;letter-spacing:.06em;font-size:14px;font-weight:600;color:var(--faint);
     padding:14px 20px 12px;border-bottom:3px solid transparent;transition:.15s;position:relative;
@@ -404,7 +404,7 @@
     <div class="titleblock">
       <div class="badge"><span class="dot"></span> Cedar Hill Fire · General Fund 100340</div>
       <h1>FY26 Budget <span>Status Board</span></h1>
-      <p class="sub" id="verSub">CHFD Dashboard <b>v1.4</b> · updated Jul 16 2026</p>
+      <p class="sub" id="verSub">CHFD Dashboard <b>v1.5</b> · updated Jul 16 2026</p>
     </div>
     <div class="fyclocks">
       <div class="fyclock">
@@ -464,11 +464,27 @@
 
   <div class="grid" id="grid"></div>
 
-  <!-- ===================== PO / INVOICE LEDGER ===================== -->
-  <section class="ledger">
+  <!-- ===================== PO / INVOICE LEDGER (legacy, hidden — math now reads from Munis) ===================== -->
+  <section class="ledger" style="display:none">
     <details class="led">
       <summary><span class="caret">▶</span> Tracked purchase orders &amp; invoices (<span id="ledCount">0</span>)</summary>
       <div id="ledBody"></div>
+    </details>
+  </section>
+
+  <!-- ===================== TRACKED PURCHASE ORDERS (ENCUMBERED) ===================== -->
+  <section class="ledger">
+    <details class="led">
+      <summary><span class="caret">▶</span> Tracked Purchase Orders &mdash; Encumbered (<span id="poCount">0</span>)</summary>
+      <div id="poBody"></div>
+    </details>
+  </section>
+
+  <!-- ===================== OPEN INVOICES ===================== -->
+  <section class="ledger">
+    <details class="led">
+      <summary><span class="caret">▶</span> Open Invoices (<span id="oiCount">0</span>)</summary>
+      <div id="oiBody"></div>
     </details>
   </section>
 
@@ -721,8 +737,8 @@ function computeRev(){
    "incoming" — do that when it's been paid (now in Munis spent) or cancelled. */
 let PEND_BY_CODE = {};
 function ledgerAll(){
-  const manual=(config.manual||[]).map(m=>({...m, manual:true}));
-  return LEDGER.map(r=>({...r})).concat(manual);
+  return [];   // ledger emptied: "Available" now reads straight from the Munis report (budget - spent - encumbered).
+               // Open POs & open invoices are shown in their own read-only boxes below, not folded into the math.
 }
 function isClosed(id){ return !!((config.closed||{})[id]); }
 function computePend(){
@@ -874,7 +890,7 @@ function renderRollup(){
   const t = ROWS.reduce((a,r)=>({b:a.b+r.budget,s:a.s+r.spent,e:a.e+r.enc,p:a.p+r.pend.d,w:a.w+(wlc[r.code]||0),rv:a.rv+r.rev}),
                         {b:0,s:0,e:0,p:0,w:0,rv:0});
   const avail = t.b - t.s - t.e - t.p - (applyWL? t.w : 0);
-  const parts=[`after ${money(t.p)} incoming`];
+  const parts=[]; if(t.p>0) parts.push(`after ${money(t.p)} incoming`);
   if(applyRev) parts.push(`+${money(t.rv)} revenue applied`);
   if(applyWL) parts.push(`+${money(t.w)} wish list`);
   const sub = parts.join(' · ');
@@ -1544,6 +1560,44 @@ renderWishes();
   }
 
   function init(){ wireUpload(); fetchBudget(); }
+  if(document.readyState==="loading") document.addEventListener('DOMContentLoaded',init); else init();
+})();
+
+</script>
+
+<!-- Open POs + Open Invoices detail boxes -->
+<script>
+/* Read-only detail boxes: Tracked Purchase Orders (Encumbered) + Open Invoices.
+   Data embedded at build time. Neither changes the board's Available math. */
+(function(){
+  const OPEN_POS=[{"code":"5105","po":"2620156","vendor":"BOUND TREE MEDICAL, LLC","amt":36743.74,"desc":"EMS SUPPLIES-FY26 BUYBOARD CONTRA"},{"code":"5105","po":"2620480","vendor":"MLR ROPE & GEAR INC","amt":666.33,"desc":"Edelrid VERTIC TRIPLE LOCK Black"},{"code":"5105","po":"2620480","vendor":"MLR ROPE & GEAR INC","amt":2332.16,"desc":"Edelrid VERTIC TRIPLE LOCK Black"},{"code":"5105","po":"2620481","vendor":"MLR ROPE & GEAR INC","amt":425.32,"desc":"ISC Chest Ascender - Black SKU: R"},{"code":"5105","po":"2620481","vendor":"MLR ROPE & GEAR INC","amt":89.32,"desc":"Petzl DELTA 10mm screw link, tria"},{"code":"5105","po":"2620481","vendor":"MLR ROPE & GEAR INC","amt":1130.4,"desc":"Climbing Technology Quick'Up+ - R"},{"code":"5105","po":"2620481","vendor":"MLR ROPE & GEAR INC","amt":188.4,"desc":"Climbing Technology Quick'Up+ - L"},{"code":"5105","po":"2620481","vendor":"MLR ROPE & GEAR INC","amt":324.24,"desc":"Eyolf Q41 - Trap 1 SKU: Q41"},{"code":"5105","po":"2620481","vendor":"MLR ROPE & GEAR INC","amt":133.84,"desc":"Petzl GO 7mm, oval - Screw Link -"},{"code":"5105","po":"2620481","vendor":"MLR ROPE & GEAR INC","amt":154.4,"desc":"Maxim Ropes - Teufelberger (Maxim"},{"code":"5113","po":"2620351","vendor":"PLASTIX PLUS LLC","amt":1180,"desc":"PP-AMK-iS320 Horizontal Bracket f"},{"code":"5113","po":"2620351","vendor":"PLASTIX PLUS LLC","amt":1120,"desc":"PP-AMK-iC700 Horizontal Bracket f"},{"code":"5113","po":"2620351","vendor":"PLASTIX PLUS LLC","amt":1120,"desc":"Horizontal mounting bracket for i"},{"code":"5113","po":"2620404","vendor":"AED123 LLC","amt":3200,"desc":"Lite AED Service Plan FY26 (APR-S"},{"code":"5113","po":"2620485","vendor":"METRO FIRE APPARATUS SPECIALI","amt":2696,"desc":"ELK-0069XD01 2.5\" XD SHUTOFF 1.5\""},{"code":"5113","po":"2620485","vendor":"METRO FIRE APPARATUS SPECIALI","amt":940,"desc":"ELK-66765007 188-XD 1-1/16\" SMOOT"},{"code":"5113","po":"2620485","vendor":"METRO FIRE APPARATUS SPECIALI","amt":85,"desc":"SHIPPING"},{"code":"5115","po":"2620157","vendor":"OFFEN PETROLEUM, LLC","amt":18681.83,"desc":"Fuel-Station 213 & 214 FY26"},{"code":"5115","po":"2620429","vendor":"OFFEN PETROLEUM, LLC","amt":4070.74,"desc":"Fuel Station 211"},{"code":"5204","po":"2620179","vendor":"SIDDONS-MARTIN EMERGENCY GROU","amt":127566.48,"desc":"FY26 VEHICLE MAINTENANCE  HGAC FS"},{"code":"5352","po":"2620458","vendor":"GUEST COMMUNICATIONS CORPORAT","amt":2827,"desc":"Emergency Guidebook Directories"},{"code":"5352","po":"2620458","vendor":"GUEST COMMUNICATIONS CORPORAT","amt":56.25,"desc":"Wall Mounting Hooks"},{"code":"5374","po":"2620218","vendor":"FRONT LINE MOBILE HEALTH, PLL","amt":4625,"desc":"Firefighter Physicals"},{"code":"5374","po":"2620218","vendor":"FRONT LINE MOBILE HEALTH, PLL","amt":3000,"desc":"One Time Implementation Fee"},{"code":"5374","po":"2620309","vendor":"CITY OF DESOTO","amt":3036.44,"desc":"Full Time Annual Salary"},{"code":"5374","po":"2620309","vendor":"CITY OF DESOTO","amt":658.49,"desc":"Uniforms"},{"code":"5374","po":"2620309","vendor":"CITY OF DESOTO","amt":62.5,"desc":"Certification Pay"},{"code":"5374","po":"2620309","vendor":"CITY OF DESOTO","amt":183.56,"desc":"Medical Benefit (HSA Medical Plan"},{"code":"5374","po":"2620309","vendor":"CITY OF DESOTO","amt":8.33,"desc":"Dental Insurance Benefit"},{"code":"5374","po":"2620309","vendor":"CITY OF DESOTO","amt":3.54,"desc":"Basic Term Life Benefit"},{"code":"5374","po":"2620309","vendor":"CITY OF DESOTO","amt":3.76,"desc":"Group Long Term Benefit"},{"code":"5374","po":"2620385","vendor":"FIRE-DEX GW, LLC","amt":446.13,"desc":"Bunker Gear Cleaning & Inspection"},{"code":"5613","po":"2620391","vendor":"EXTENSION SERVICE","amt":3000,"desc":"Fire Service Chief Executive Offi"},{"code":"5616","po":"2620071","vendor":"METRO FIRE APPARATUS SPECIALI","amt":5000,"desc":"PPE-GLOVES"},{"code":"5616","po":"2620155","vendor":"CASCO INDUSTRIES, INC","amt":3432.94,"desc":"PPE- COATS, PANTS, HELMETS, BOOTS"},{"code":"5616","po":"2620418","vendor":"NAFECO, INC.","amt":6862.8,"desc":"Phenix TL2 Leather Helmet. Bend o"},{"code":"5616","po":"2620418","vendor":"NAFECO, INC.","amt":385.2,"desc":"Flip Down Eye Shield (Bourkes)"},{"code":"5616","po":"2620418","vendor":"NAFECO, INC.","amt":96.5,"desc":"FREIGHT"},{"code":"5616","po":"2620482","vendor":"LIGHTHOUSE UNIFORMS INC","amt":74.95,"desc":"CLASS A DRESS CAP-CAPTAIN Name: W"},{"code":"5616","po":"2620482","vendor":"LIGHTHOUSE UNIFORMS INC","amt":29.95,"desc":"CLASS A CAP DEVICE Name: Wes Vaug"},{"code":"5616","po":"2620482","vendor":"LIGHTHOUSE UNIFORMS INC","amt":24.95,"desc":"CLASS A BELT & BUCKLE Name: Wes V"},{"code":"5616","po":"2620482","vendor":"LIGHTHOUSE UNIFORMS INC","amt":24.95,"desc":"CLASS A BELT & BUCKLE Name: Curti"},{"code":"5616","po":"2620482","vendor":"LIGHTHOUSE UNIFORMS INC","amt":67.76,"desc":"CLASS A DRESS SHIRT Name: Chris H"},{"code":"5616","po":"2620482","vendor":"LIGHTHOUSE UNIFORMS INC","amt":99.95,"desc":"SHOES Name: Wes Vaughn Shoe Style"},{"code":"5616","po":"2620482","vendor":"LIGHTHOUSE UNIFORMS INC","amt":99.95,"desc":"SHOES Name: Curtis Greenburg Shoe"},{"code":"5616","po":"2620482","vendor":"LIGHTHOUSE UNIFORMS INC","amt":99.95,"desc":"SHOES Name: Jacob Wasinger Shoe S"},{"code":"5616","po":"2620482","vendor":"LIGHTHOUSE UNIFORMS INC","amt":99.95,"desc":"SHOES Name: Chris Holcomb Shoe St"},{"code":"5616","po":"2620482","vendor":"LIGHTHOUSE UNIFORMS INC","amt":99.95,"desc":"SHOES Name: Sharrod Murray Shoe S"},{"code":"5616","po":"2620482","vendor":"LIGHTHOUSE UNIFORMS INC","amt":99.95,"desc":"SHOES Name: Matt Baker Shoe Style"},{"code":"5616","po":"2620482","vendor":"LIGHTHOUSE UNIFORMS INC","amt":11.95,"desc":"TIE/ASCOTS Name: Matt Baker Tie C"},{"code":"5616","po":"2620482","vendor":"LIGHTHOUSE UNIFORMS INC","amt":511.3,"desc":"CLASS A DRESS UNIFORM OSCAR VAZQU"},{"code":"5616","po":"2620482","vendor":"LIGHTHOUSE UNIFORMS INC","amt":74.71,"desc":"CLASS A DRESS SHIRT Name: Oscar V"},{"code":"5616","po":"2620482","vendor":"LIGHTHOUSE UNIFORMS INC","amt":114.95,"desc":"CLASS A DRESS PANTS & SKIRTS Name"},{"code":"5616","po":"2620482","vendor":"LIGHTHOUSE UNIFORMS INC","amt":114.95,"desc":"CLASS A DRESS PANTS & SKIRTS Name"},{"code":"5616","po":"2620482","vendor":"LIGHTHOUSE UNIFORMS INC","amt":114.95,"desc":"CLASS A DRESS PANTS & SKIRTS Name"},{"code":"5616","po":"2620482","vendor":"LIGHTHOUSE UNIFORMS INC","amt":342.95,"desc":"CLASS A DRESS JACKET KAMERON EBAN"},{"code":"5616","po":"2620482","vendor":"LIGHTHOUSE UNIFORMS INC","amt":24.95,"desc":"CLASS A BELT & BUCKLE Name: Kamer"},{"code":"5616","po":"2620482","vendor":"LIGHTHOUSE UNIFORMS INC","amt":99.95,"desc":"SHOES Name: Kameron Ebanks Shoe S"},{"code":"5616","po":"2620482","vendor":"LIGHTHOUSE UNIFORMS INC","amt":74.95,"desc":"CLASS A DRESS CAP Name: Kameron E"},{"code":"5616","po":"2620482","vendor":"LIGHTHOUSE UNIFORMS INC","amt":29.95,"desc":"CLASS A CAP DEVICE Name: Kameron"},{"code":"5616","po":"2620482","vendor":"LIGHTHOUSE UNIFORMS INC","amt":24.95,"desc":"CLASS A BELT & BUCKLE Name: Micha"},{"code":"5616","po":"2620482","vendor":"LIGHTHOUSE UNIFORMS INC","amt":134.95,"desc":"SHIPPING"},{"code":"5616","po":"2620482","vendor":"LIGHTHOUSE UNIFORMS INC","amt":28.6,"desc":"HANDLING"},{"code":"5616","po":"2620482","vendor":"LIGHTHOUSE UNIFORMS INC","amt":90,"desc":"EXPEDITE FEES"}];   // [{code,po,vendor,amt,desc}]
+  const OPEN_INV=[{"code":"5104","vendor":"STAPLES BUSINESS ADV","inv":"6067534239","amt":147.26,"po":"","desc":"STATION 1 SUPPLIES"},{"code":"5105","vendor":"BOUND TREE MEDICAL,","inv":"86257357","amt":1211.75,"po":"2620156","desc":"EMS SUPPLIES FY26"},{"code":"5105","vendor":"BOUND TREE MEDICAL,","inv":"86261064","amt":145,"po":"2620156","desc":"EMS SUPPLIES FY26"},{"code":"5105","vendor":"BOUND TREE MEDICAL,","inv":"86267513","amt":1435.54,"po":"2620156","desc":"EMS SUPPLIES FY26"},{"code":"5105","vendor":"LIFE-ASSIST, INC.","inv":"2151393","amt":62.4,"po":"2620038","desc":"EMS SUPPLIES FY26"},{"code":"5105","vendor":"LIFE-ASSIST, INC.","inv":"2152764","amt":2029.66,"po":"2620038","desc":"EMS SUPPLIES FY26"},{"code":"5105","vendor":"LIFE-ASSIST, INC.","inv":"2156755","amt":115.5,"po":"2620038","desc":"EMS SUPPLIES FY26"},{"code":"5113","vendor":"FIRE COM","inv":"INV375110","amt":225,"po":"","desc":"RADIO HEADSET REPAIR"},{"code":"5113","vendor":"METRO FIRE APPARATUS","inv":"INV37000","amt":2149,"po":"","desc":"STANDPIPE KIT W/BAG"},{"code":"5113","vendor":"AED123 LLC","inv":"35771","amt":1600,"po":"2620404","desc":"Lite AED Service Plan"},{"code":"5204","vendor":"SIDDONS-MARTIN EMERG","inv":"303-0000064320","amt":2010.89,"po":"2620179","desc":"FY26 VEHICLE MAINTENANCE"},{"code":"5204","vendor":"SIDDONS-MARTIN EMERG","inv":"303-0000064767","amt":8835.98,"po":"2620179","desc":"FY26 VEHICLE MAINTENANCE"},{"code":"5374","vendor":"CITY OF DESOTO","inv":"CED07072026","amt":6156.32,"po":"2620309","desc":"Regional EMS Training Officer"},{"code":"5611","vendor":"CEDAR HILL CHAMBER O","inv":"17634","amt":300,"po":"","desc":"MEMBERSHIP RENEWAL"},{"code":"5613","vendor":"FIRE IN TEXAS","inv":"14787","amt":900,"po":"","desc":"FIT FIRE OFFICER-TURMAN,JOHNSON,GLASS,CUNHA"},{"code":"5616","vendor":"NAFECO, INC.","inv":"1429716","amt":373.85,"po":"2620418","desc":"LEATHER HELMETS"}];   // [{code,vendor,inv,amt,desc,po}]
+  const money=n=>n.toLocaleString('en-US',{style:'currency',currency:'USD',maximumFractionDigits:0});
+  const money2=n=>n.toLocaleString('en-US',{style:'currency',currency:'USD',minimumFractionDigits:2,maximumFractionDigits:2});
+  const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+  function renderPOs(){
+    const el=document.getElementById('poBody'); if(!el) return;
+    const rows=[...OPEN_POS].sort((a,b)=>a.code.localeCompare(b.code)||b.amt-a.amt);
+    const total=rows.reduce((s,r)=>s+r.amt,0);
+    const cnt=document.getElementById('poCount'); if(cnt) cnt.textContent=rows.length;
+    el.innerHTML='<div class="led-sum"><b>'+money(total)+'</b> across '+rows.length+' open purchase orders — this is the detail behind the <b>Encumbered</b> totals on the cards above, already subtracted from Available (not extra spending).</div>'
+      +'<div class="led-scroll"><table class="led-tbl"><thead><tr><th>Acct</th><th>PO #</th><th>Vendor</th><th>Item</th><th class="ra">Open</th></tr></thead><tbody>'
+      +rows.map(r=>'<tr><td class="mono">'+esc(r.code)+'</td><td class="mono">'+esc(r.po)+'</td><td>'+esc(r.vendor)+'</td><td>'+esc(r.desc)+'</td><td class="ra mono">'+money2(r.amt)+'</td></tr>').join('')
+      +'</tbody></table></div>';
+  }
+  function renderInv(){
+    const el=document.getElementById('oiBody'); if(!el) return;
+    const rows=[...OPEN_INV].sort((a,b)=>a.code.localeCompare(b.code)||b.amt-a.amt);
+    const total=rows.reduce((s,r)=>s+r.amt,0);
+    const direct=rows.filter(r=>!r.po).reduce((s,r)=>s+r.amt,0);
+    const cnt=document.getElementById('oiCount'); if(cnt) cnt.textContent=rows.length;
+    el.innerHTML='<div class="led-sum"><b>'+money(total)+'</b> in open (unpaid) invoices — <b>'+money(total-direct)+'</b> already on a PO (counted in Encumbered) and <b>'+money(direct)+'</b> new. Shown for visibility; <b>not</b> subtracted from Available.</div>'
+      +'<div class="led-scroll"><table class="led-tbl"><thead><tr><th>Acct</th><th>Vendor</th><th>Invoice #</th><th>Description</th><th>PO</th><th class="ra">Amount</th></tr></thead><tbody>'
+      +rows.map(r=>'<tr><td class="mono">'+esc(r.code)+'</td><td>'+esc(r.vendor)+'</td><td class="mono">'+esc(r.inv)+'</td><td>'+esc(r.desc)+'</td><td class="mono">'+(r.po?esc(r.po):'<span style="color:var(--pend)">new</span>')+'</td><td class="ra mono">'+money2(r.amt)+'</td></tr>').join('')
+      +'</tbody></table></div>';
+  }
+  function init(){ renderPOs(); renderInv(); }
   if(document.readyState==="loading") document.addEventListener('DOMContentLoaded',init); else init();
 })();
 
