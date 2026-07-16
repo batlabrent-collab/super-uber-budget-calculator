@@ -403,7 +403,7 @@
     <div class="titleblock">
       <div class="badge"><span class="dot"></span> Cedar Hill Fire · General Fund 100340</div>
       <h1>FY26 Budget <span>Status Board</span></h1>
-      <p class="sub">Where every tracked line stands against the calendar — spent, committed, incoming invoices, and what's genuinely left before September 30.</p>
+      <p class="sub" id="verSub">CHFD Dashboard <b>v1.2</b> · updated Jul 16 2026</p>
     </div>
     <div class="fyclocks">
       <div class="fyclock">
@@ -430,7 +430,7 @@
 
 <!-- ===================== FRESHNESS STAMP ===================== -->
 <div class="freshbar"><div class="wrap freshbar-inner">
-  <span class="fresh-ver">CHFD Dashboard <b>v1.2</b><span class="fresh-build"> · updated Jul 16 2026</span></span>
+  <span class="fresh-ver">Data currency</span>
   <span class="fresh-feeds">
     <span class="fresh-item">Budget data <b id="freshBudget">—</b></span>
     <span class="fresh-dot">•</span>
@@ -1734,17 +1734,15 @@ renderWishes();
 
   /* ---- tab switching ---- */
   function wireTabs(){
-    const h1=document.querySelector('header h1'), sub=document.querySelector('header .sub');
-    const oH1=h1?h1.innerHTML:"", oSub=sub?sub.textContent:"";
+    const h1=document.querySelector('header h1');
+    const oH1=h1?h1.innerHTML:"";
     const panels={budget:document.getElementById('tab-budget'), perf:document.getElementById('tab-perf')};
     document.querySelectorAll('.tab[data-tab]').forEach(t=>t.addEventListener('click',()=>{
       const v=t.getAttribute('data-tab');
       document.querySelectorAll('.tab[data-tab]').forEach(x=>x.classList.toggle('on',x===t));
       panels.budget.hidden=(v!=="budget"); panels.perf.hidden=(v!=="perf");
       document.body.dataset.view=v;
-      if(h1&&sub){ if(v==="perf"){ h1.innerHTML='FY26 Performance <span>Metrics</span>';
-          sub.textContent='Response-time standards across shifts and stations — turnout, and more as data comes in.'; }
-        else { h1.innerHTML=oH1; sub.textContent=oSub; } }
+      if(h1){ h1.innerHTML = (v==="perf") ? 'FY26 Performance <span>Metrics</span>' : oH1; }  // leave the version subtitle intact
       if(v==="perf") render();
     }));
     document.body.dataset.view="budget";
